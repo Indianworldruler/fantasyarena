@@ -1,4 +1,4 @@
-const BASE_URL = "http://localhost:8000";
+const BASE_URL = "https://fantasyarena-euzq.onrender.com";
 
 function getToken() {
   return localStorage.getItem("fa_token");
