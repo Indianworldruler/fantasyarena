@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FantasyArena — Wallet</title>
+  <link rel="stylesheet" href="css/styles.css?v=4" />
+</head>
+<body>
+<div class="page">
+  <div class="container">
+    <h2 style="margin-bottom:1.5rem">Wallet</h2>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-bottom:1.5rem">
+      <div class="card" style="text-align:center">
+        <div style="font-size:0.75rem;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.5rem">Available Balance</div>
+        <div style="font-family:'Rajdhani',sans-serif;font-size:3rem;color:var(--accent-gold)" id="balance-display">₹ —</div>
+      </div>
+      <div class="card">
+        <h4 style="margin-bottom:1rem">Quick Actions</h4>
+        <div style="display:flex;gap:0.75rem;flex-wrap:wrap">
+          <button class="btn btn-primary" onclick="openModal('deposit')">+ Deposit</button>
+          <button class="btn btn-secondary" onclick="openModal('withdraw')">Withdraw</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h4 style="margin-bottom:1rem">Transaction History</h4>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Date</th><th>Description</th><th>Type</th><th style="text-align:right">Amount</th><th>Status</th></tr></thead>
+          <tbody id="tx-body"><tr><td colspan="5" style="text-align:center;color:var(--text-secondary);padding:2rem">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Deposit/Withdraw Modal -->
+<div id="money-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:200;align-items:center;justify-content:center">
+  <div class="card" style="width:360px;max-width:90vw">
+    <h3 id="modal-title" style="margin-bottom:1rem">Deposit</h3>
+    <div class="form-group">
+      <label class="form-label">Amount (₹)</label>
+      <input id="modal-amount" type="number" class="form-control" placeholder="Enter amount" min="1" />
+    </div>
+    <div style="display:flex;gap:0.5rem;margin-bottom:1rem;flex-wrap:wrap">
+      <button class="btn btn-secondary btn-sm" onclick="setAmount(100)">₹100</button>
+      <button class="btn btn-secondary btn-sm" onclick="setAmount(500)">₹500</button>
+      <button class="btn btn-secondary btn-sm" onclick="setAmount(1000)">₹1000</button>
+    </div>
+    <div style="display:flex;gap:0.75rem">
+      <button id="modal-confirm-btn" class="btn btn-primary" style="flex:1">Confirm</button>
+      <button onclick="closeModal()" class="btn btn-secondary">Cancel</button>
+    </div>
+    <div id="modal-error" style="display:none;margin-top:0.75rem;color:var(--accent-red);font-size:0.8125rem"></div>
+  </div>
+</div>
+
+<script src="js/api.js?v=4"></script>
+<script src="js/toast.js?v=4"></script>
+<script src="js/nav.js?v=4"></script>
+<script>
+  buildNav("wallet");
+  let currentAction = "deposit";
+
+  function setAmount(v) { document.getElementById("modal-amount").value = v; }
+
+  function openModal(action) {
+    currentAction = action;
+    document.getElementById("modal-title").textContent = action === "deposit" ? "Deposit Funds" : "Withdraw Funds";
+    document.getElementById("modal-amount").value = "";
+    document.getElementById("modal-error").style.display = "none";
+    document.getElementById("money-modal").style.display = "flex";
+  }
+  function closeModal() { document.getElementById("money-modal").style.display = "none"; }
+
+  document.getElementById("modal-confirm-btn").addEventListener("click", async () => {
+    const amount = parseFloat(document.getElementById("modal-amount").value);
+    const errEl  = document.getElementById("modal-error");
+    errEl.style.display = "none";
+    if (!amount || amount <= 0) { errEl.textContent = "Enter a valid amount."; errEl.style.display = "block"; return; }
+
+    const btn = document.getElementById("modal-confirm-btn");
+    btn.disabled = true; btn.textContent = "Processing…";
+    try {
+      const res = await api.post(`/wallet/${currentAction}`, { amount });
+      showToast(`${currentAction === "deposit" ? "Deposited" : "Withdrawn"} ₹${amount}. New balance: ₹${res.balance.toFixed(2)}`, "success");
+      document.getElementById("balance-display").textContent = `₹ ${res.balance.toFixed(2)}`;
+      const navWallet = document.getElementById("nav-wallet");
+      if (navWallet) navWallet.textContent = `₹ ${res.balance.toFixed(2)}`;
+      closeModal();
+      loadTransactions();
+    } catch (e) {
+      errEl.textContent = e.message; errEl.style.display = "block";
+    } finally { btn.disabled = false; btn.textContent = "Confirm"; }
+  });
+
+  async function loadBalance() {
+    try {
+      const w = await api.get("/wallet/balance");
+      document.getElementById("balance-display").textContent = `₹ ${w.balance.toFixed(2)}`;
+    } catch (_) {}
+  }
+
+  async function loadTransactions() {
+    try {
+      const txs = await api.get("/wallet/transactions");
+      const tbody = document.getElementById("tx-body");
+      if (!txs.length) { tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-secondary);padding:2rem">No transactions yet.</td></tr>'; return; }
+      tbody.innerHTML = txs.map(t => {
+        const isCredit = ["deposit","contest_winnings","refund"].includes(t.type);
+        return `<tr>
+          <td style="font-size:0.8125rem;color:var(--text-secondary)">${new Date(t.created_at).toLocaleDateString()}</td>
+          <td>${t.description || t.type}</td>
+          <td><span class="badge ${isCredit ? 'badge-green' : 'badge-upcoming'}">${t.type.replace("_"," ")}</span></td>
+          <td style="text-align:right;font-family:'Rajdhani',sans-serif;color:${isCredit ? 'var(--accent-green)' : 'var(--accent-red)'}">
+            ${isCredit ? '+' : '-'}₹${t.amount.toFixed(2)}</td>
+          <td><span class="badge ${t.status === 'success' ? 'badge-green' : 'badge-done'}">${t.status}</span></td>
+        </tr>`;
+      }).join("");
+    } catch (_) {}
+  }
+
+  loadBalance();
+  loadTransactions();
+</script>
+</body>
+</html>

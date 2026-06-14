@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FantasyArena — Create Account</title>
+  <link rel="stylesheet" href="css/styles.css?v=4" />
+</head>
+<body>
+  <div class="auth-page">
+    <div class="auth-card card">
+      <div class="auth-logo">
+        <h1>Fantasy<span>Arena</span></h1>
+        <p>Join millions of fantasy players.</p>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Username</label>
+        <input id="reg-username" type="text" class="form-control" placeholder="Choose a username" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Full Name</label>
+        <input id="reg-fullname" type="text" class="form-control" placeholder="Your full name" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input id="reg-email" type="email" class="form-control" placeholder="you@email.com" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input id="reg-password" type="password" class="form-control" placeholder="At least 6 characters" />
+      </div>
+
+      <button id="reg-btn" class="btn btn-primary btn-full btn-lg">Create Account</button>
+      <div id="reg-error" style="display:none;margin-top:1rem;color:var(--accent-red);font-size:0.875rem;text-align:center;"></div>
+
+      <p style="text-align:center;margin-top:1rem;font-size:0.875rem;color:var(--text-secondary)">
+        Already have an account? <a href="index.html">Sign in</a>
+      </p>
+    </div>
+  </div>
+
+  <script src="js/api.js?v=4"></script>
+  <script src="js/toast.js?v=4"></script>
+  <script>
+    document.getElementById("reg-btn").addEventListener("click", async () => {
+      const username  = document.getElementById("reg-username").value.trim();
+      const full_name = document.getElementById("reg-fullname").value.trim();
+      const email     = document.getElementById("reg-email").value.trim();
+      const password  = document.getElementById("reg-password").value;
+      const errEl     = document.getElementById("reg-error");
+      errEl.style.display = "none";
+
+      if (!username || !email || !password) {
+        errEl.textContent = "Username, email, and password are required.";
+        errEl.style.display = "block";
+        return;
+      }
+
+      const btn = document.getElementById("reg-btn");
+      btn.disabled = true;
+      btn.textContent = "Creating account…";
+
+      try {
+        await api.post("/auth/register", { username, email, password, full_name }, false);
+        showToast("Account created! Signing you in…", "success");
+        const data = await api.post("/auth/login", { username, password }, false);
+        api.setAuth(data.access_token, { id: data.user_id, username: data.username, is_admin: data.is_admin });
+        window.location.href = "dashboard.html";
+      } catch (e) {
+        errEl.textContent = e.message;
+        errEl.style.display = "block";
+        btn.disabled = false;
+        btn.textContent = "Create Account";
+      }
+    });
+  </script>
+</body>
+</html>

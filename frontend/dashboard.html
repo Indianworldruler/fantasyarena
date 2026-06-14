@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FantasyArena — Dashboard</title>
+  <link rel="stylesheet" href="css/styles.css?v=4" />
+</head>
+<body>
+  <div class="live-ticker">
+    <div class="live-ticker-inner" id="ticker-inner">
+      <span class="ticker-item">⚡ Loading FantasyArena…</span>
+    </div>
+  </div>
+
+  <div class="page">
+    <div class="container">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2rem;flex-wrap:wrap;gap:0.75rem">
+        <div>
+          <h1 id="welcome-heading">Welcome back</h1>
+          <p style="color:var(--text-secondary);margin-top:0.25rem">Here's your fantasy overview.</p>
+        </div>
+        <a href="contests.html" class="btn btn-primary">Join a Contest →</a>
+      </div>
+
+      <div class="stats-grid" style="margin-bottom:2rem">
+        <div class="stat-box">
+          <div class="stat-val" id="stat-balance">—</div>
+          <div class="stat-label">Wallet Balance</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-val" id="stat-contests">—</div>
+          <div class="stat-label">Contests Joined</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-val" id="stat-teams">—</div>
+          <div class="stat-label">Teams Created</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-val" id="stat-winnings">—</div>
+          <div class="stat-label">Total Winnings</div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem">
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+            <h3 style="margin:0">My Teams</h3>
+            <a href="myteams.html" class="btn btn-secondary btn-sm">View All →</a>
+          </div>
+          <div id="my-teams-list">
+            <div class="empty-state">
+              <p>No teams yet.</p>
+              <a href="contests.html" class="btn btn-secondary btn-sm" style="margin-top:0.75rem">Browse Contests</a>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+            <h3 style="margin:0">Recent Notifications</h3>
+            <a href="notifications.html" class="btn btn-secondary btn-sm">View All →</a>
+          </div>
+          <div id="notif-list">
+            <div class="empty-state"><p>No notifications.</p></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/api.js?v=4"></script>
+  <script src="js/toast.js?v=4"></script>
+  <script src="js/nav.js?v=4"></script>
+  <script>
+    buildNav("dashboard");
+
+    async function loadDashboard() {
+      const user = api.getUser();
+      document.getElementById("welcome-heading").textContent = `Welcome back, ${user.username}`;
+
+      // Wallet balance
+      try {
+        const wallet = await api.get("/wallet/balance");
+        document.getElementById("stat-balance").textContent = `₹${wallet.balance.toFixed(0)}`;
+      } catch (_) {}
+
+      // Summary stats: contests joined, total winnings, teams created
+      try {
+        const summary = await api.get("/users/me/summary");
+        document.getElementById("stat-contests").textContent = summary.contests_joined;
+        document.getElementById("stat-winnings").textContent = `₹${summary.total_winnings.toFixed(0)}`;
+        document.getElementById("stat-teams").textContent = summary.teams_created;
+      } catch (_) {}
+
+      // My Teams
+      try {
+        const teams = await api.get("/teams");
+        if (teams.length > 0) {
+          document.getElementById("my-teams-list").innerHTML = teams.slice(0, 4).map(t => `
+            <a href="myteams.html" style="display:flex;justify-content:space-between;align-items:center;padding:0.6rem 0;border-bottom:1px solid var(--border);text-decoration:none;color:inherit">
+              <div style="min-width:0">
+                <div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t.name}</div>
+                <div style="font-size:0.75rem;color:var(--text-secondary)">Contest #${t.contest_id} ${t.is_locked ? '· <span style="color:var(--accent-green)">Joined</span>' : '· <span style="color:var(--accent-gold)">Not joined</span>'}</div>
+              </div>
+              <div style="font-family:'Rajdhani',sans-serif;font-size:1.1rem;color:var(--accent-gold);flex-shrink:0;margin-left:0.5rem">${t.total_points.toFixed(1)} pts</div>
+            </a>`).join("");
+          if (teams.length > 4) {
+            document.getElementById("my-teams-list").innerHTML += `<div style="text-align:center;padding-top:0.5rem"><a href="myteams.html" style="font-size:0.8125rem;color:var(--text-secondary)">+${teams.length - 4} more teams</a></div>`;
+          }
+        }
+      } catch (_) {}
+
+      // Notifications
+      try {
+        const notifs = await api.get("/notifications");
+        if (notifs.length > 0) {
+          const iconMap = {
+            contest_joined: "🏆", score_update: "⚡", leaderboard_update: "📊",
+            prize_awarded: "💰", match_started: "🏏", match_completed: "✅",
+            wallet: "💳", system: "🔔",
+          };
+          document.getElementById("notif-list").innerHTML = notifs.slice(0, 5).map(n => `
+            <div style="display:flex;gap:0.6rem;padding:0.6rem 0;border-bottom:1px solid var(--border);${!n.is_read ? '' : 'opacity:0.6'}">
+              <div style="font-size:1.1rem;flex-shrink:0">${iconMap[n.type] || "🔔"}</div>
+              <div style="min-width:0">
+                <div style="font-size:0.875rem;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${n.title}</div>
+                <div style="font-size:0.75rem;color:var(--text-secondary);overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical">${n.message}</div>
+              </div>
+            </div>`).join("");
+        }
+      } catch (_) {}
+
+      // Live ticker — real data
+      try {
+        const contests = await api.get("/contests");
+        const items = [];
+        const live = contests.filter(c => c.status === "live");
+        const upcoming = contests.filter(c => c.status === "upcoming");
+
+        if (live.length) {
+          live.forEach(c => items.push(`🔴 LIVE: ${c.name} — Prize ₹${c.prize_pool.toLocaleString()}`));
+        }
+        if (upcoming.length) {
+          upcoming.slice(0, 3).forEach(c => items.push(`🏏 Upcoming: ${c.name} — Entry ₹${c.entry_fee}`));
+        }
+        if (!items.length) {
+          items.push("⚡ Welcome to FantasyArena — Build your squad and join a contest!");
+        }
+        // Duplicate for seamless scroll
+        const ticker = document.getElementById("ticker-inner");
+        const all = [...items, ...items];
+        ticker.innerHTML = all.map((t, i) =>
+          `<span class="ticker-item">${t}</span>${i < all.length - 1 ? '<span class="ticker-sep">•</span>' : ''}`
+        ).join("");
+      } catch (_) {
+        document.getElementById("ticker-inner").innerHTML = '<span class="ticker-item">⚡ Welcome to FantasyArena</span>';
+      }
+    }
+
+    loadDashboard();
+  </script>
+</body>
+</html>

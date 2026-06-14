@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FantasyArena — Live Match</title>
+  <link rel="stylesheet" href="css/styles.css?v=4" />
+</head>
+<body>
+<div class="page">
+  <div class="container">
+
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:0.5rem">
+      <div>
+        <h2 style="margin-bottom:0.2rem">Live Match Center</h2>
+        <p style="color:var(--text-secondary);font-size:0.875rem">Real-time scores for the contests you've joined.</p>
+      </div>
+      <div id="conn-status" style="font-size:0.8125rem;color:var(--text-secondary)">
+        <span class="conn-dot disconnected" id="conn-dot"></span><span id="conn-label">Not connected</span>
+      </div>
+    </div>
+
+    <!-- My joined contests (live picker) -->
+    <div id="my-contests-section" style="margin-bottom:1.5rem">
+      <div id="my-contests-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:0.75rem">
+        <div class="skeleton" style="height:70px"></div>
+        <div class="skeleton" style="height:70px"></div>
+      </div>
+    </div>
+
+    <!-- Main content (hidden until a contest is selected) -->
+    <div id="main-content" style="display:none;display:grid;grid-template-columns:1fr 340px;gap:1.5rem;align-items:start">
+
+      <!-- Match feed -->
+      <div>
+        <div class="card" style="margin-bottom:1rem">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;flex-wrap:wrap;gap:0.5rem">
+            <h3 id="match-title" style="margin:0">Match</h3>
+            <span class="badge" id="match-status-badge"></span>
+          </div>
+          <div id="match-teams" style="color:var(--text-secondary);font-size:0.9rem"></div>
+        </div>
+
+        <div class="card">
+          <h4 style="margin-bottom:1rem">Event Feed</h4>
+          <div id="event-feed" style="display:flex;flex-direction:column;gap:0.5rem;max-height:440px;overflow-y:auto">
+            <div class="empty-state"><p>Waiting for events…</p></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- My score panel -->
+      <div style="position:sticky;top:80px">
+        <div class="card" style="margin-bottom:1rem">
+          <h4 style="margin-bottom:0.5rem" id="my-team-name">My Team</h4>
+          <div style="text-align:center;padding:1rem 0">
+            <div style="font-family:'Rajdhani',sans-serif;font-size:3.5rem;color:var(--accent-gold)" id="my-score">0.0</div>
+            <div style="font-size:0.75rem;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.05em">Fantasy Points</div>
+          </div>
+          <div style="font-size:0.875rem;color:var(--text-secondary);text-align:center" id="my-rank">— not ranked yet —</div>
+        </div>
+
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem">
+            <h4 style="margin:0">Leaderboard</h4>
+            <a id="full-lb-link" href="leaderboard.html" class="btn btn-secondary btn-sm" style="padding:0.2rem 0.6rem;font-size:0.7rem">Full board →</a>
+          </div>
+          <div id="mini-leaderboard">
+            <div style="color:var(--text-secondary);font-size:0.875rem">No data yet.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Empty state when no contests joined -->
+    <div id="empty-state-wrap" style="display:none">
+      <div class="empty-state">
+        <h3>No live contests yet</h3>
+        <p>Join a contest to see live scores here once a match starts.</p>
+        <a href="contests.html" class="btn btn-primary btn-sm" style="margin-top:0.75rem">Browse Contests</a>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script src="js/api.js?v=4"></script>
+<script src="js/toast.js?v=4"></script>
+<script src="js/nav.js?v=4"></script>
+<script>
+buildNav("live");
+
+let ws = null;
+let wsLb = null;
+let currentMatchId   = null;
+let currentContestId = null;
+let myTeams = [];
+let allMatches = [];
+const user = api.getUser();
+let lastRanks = {};  // username -> previous rank for up/down indicator
+
+async function init() {
+  try {
+    const [teams, matches] = await Promise.all([
+      api.get("/teams"),
+      api.get("/scoring/matches"),
+    ]);
+    myTeams    = teams;
+    allMatches = matches;
+
+    if (!teams.length) {
+      document.getElementById("my-contests-section").style.display = "none";
+      document.getElementById("empty-state-wrap").style.display = "block";
+      return;
+    }
+
+    renderMyContests();
+
+    // Auto-select: prefer a live match, else first joined contest
+    const liveMatch = matches.find(m => m.status === "live" && teams.some(t => t.contest_id === m.contest_id));
+    if (liveMatch) {
+      selectContest(liveMatch.contest_id);
+    } else {
+      // Check URL param
+      const params = new URLSearchParams(window.location.search);
+      const contestParam = params.get("contest");
+      if (contestParam && teams.some(t => t.contest_id === parseInt(contestParam))) {
+        selectContest(parseInt(contestParam));
+      } else {
+        selectContest(teams[0].contest_id);
+      }
+    }
+  } catch (e) { showToast(e.message, "error"); }
+}
+
+function renderMyContests() {
+  const contestIds = [...new Set(myTeams.map(t => t.contest_id))];
+  document.getElementById("my-contests-list").innerHTML = contestIds.map(cid => {
+    const team  = myTeams.find(t => t.contest_id === cid);
+    const match = allMatches.find(m => m.contest_id === cid);
+    const isLive = match?.status === "live";
+    const isActive = cid === currentContestId;
+    return `
+      <div class="live-contest-card ${isActive ? 'active' : ''}" onclick="selectContest(${cid})">
+        <div style="min-width:0">
+          <div style="font-weight:600;font-size:0.875rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${team.name}</div>
+          <div style="font-size:0.75rem;color:var(--text-secondary)">Contest #${cid} ${match ? '· '+match.name : ''}</div>
+        </div>
+        ${isLive
+          ? '<span class="badge badge-live"><span class="live-dot" style="margin-right:4px"></span>LIVE</span>'
+          : match?.status === "completed"
+            ? '<span class="badge badge-done">Finished</span>'
+            : '<span class="badge badge-upcoming">Upcoming</span>'}
+      </div>`;
+  }).join("");
+}
+
+function selectContest(contestId) {
+  currentContestId = contestId;
+  const team  = myTeams.find(t => t.contest_id === contestId);
+  const match = allMatches.find(m => m.contest_id === contestId);
+
+  document.getElementById("main-content").style.display = "grid";
+  document.getElementById("empty-state-wrap").style.display = "none";
+  document.getElementById("full-lb-link").href = `leaderboard.html?contest=${contestId}`;
+  document.getElementById("my-team-name").textContent = team ? team.name : "My Team";
+
+  if (match) {
+    currentMatchId = match.id;
+    document.getElementById("match-title").textContent = match.name;
+    document.getElementById("match-teams").textContent = `${match.team_a} vs ${match.team_b}`;
+    const badge = document.getElementById("match-status-badge");
+    badge.className = "badge " + (match.status === "live" ? "badge-live" : match.status === "completed" ? "badge-done" : "badge-upcoming");
+    badge.innerHTML = (match.status === "live" ? '<span class="live-dot" style="margin-right:4px"></span>' : '') + match.status;
+    document.getElementById("event-feed").innerHTML = '<div class="empty-state"><p>Connecting to live feed…</p></div>';
+    connectMatchWS();
+  } else {
+    currentMatchId = null;
+    document.getElementById("match-title").textContent = "No match scheduled yet";
+    document.getElementById("match-teams").textContent = "An admin hasn't created a match for this contest yet.";
+    document.getElementById("match-status-badge").className = "badge badge-upcoming";
+    document.getElementById("match-status-badge").textContent = "waiting";
+    document.getElementById("event-feed").innerHTML = '<div class="empty-state"><p>No match yet for this contest.</p></div>';
+  }
+
+  connectLeaderboardWS();
+  loadLeaderboardSnapshot();
+  renderMyContests();
+}
+
+function setConnStatus(state) {
+  const dot = document.getElementById("conn-dot");
+  const label = document.getElementById("conn-label");
+  dot.className = "conn-dot " + state;
+  label.textContent = state === "connected" ? "Live updates connected" : state === "connecting" ? "Connecting…" : "Disconnected — retrying…";
+}
+
+function connectMatchWS() {
+  if (ws) ws.close();
+  if (!currentMatchId) return;
+  setConnStatus("connecting");
+  ws = new WebSocket(`ws://localhost:8000/ws/match/${currentMatchId}`);
+  ws.onopen = () => setConnStatus("connected");
+  ws.onmessage = (e) => {
+    const msg = JSON.parse(e.data);
+    if (msg.type === "match_event") appendEvent(msg);
+  };
+  ws.onclose = () => { setConnStatus("disconnected"); setTimeout(connectMatchWS, 3000); };
+  ws.onerror = () => setConnStatus("disconnected");
+}
+
+function connectLeaderboardWS() {
+  if (wsLb) wsLb.close();
+  if (!currentContestId) return;
+  wsLb = new WebSocket(`ws://localhost:8000/ws/leaderboard/${currentContestId}`);
+  wsLb.onmessage = (e) => {
+    const msg = JSON.parse(e.data);
+    if (msg.type === "leaderboard_update" && msg.contest_id === currentContestId) {
+      updateMiniLeaderboard(msg.leaderboard);
+    }
+  };
+  wsLb.onclose = () => { setTimeout(() => { if (currentContestId) connectLeaderboardWS(); }, 3000); };
+}
+
+function appendEvent(msg) {
+  const feed = document.getElementById("event-feed");
+  if (feed.querySelector(".empty-state")) feed.innerHTML = "";
+
+  const points = msg.points || 0;
+  const cls = points > 0 ? "points-positive" : points < 0 ? "points-negative" : "";
+  const el = document.createElement("div");
+  el.className = `event-item ${cls}`;
+  el.style.cssText = "display:flex;justify-content:space-between;align-items:center;padding:0.6rem 0.75rem;background:rgba(0,212,255,0.04);border:1px solid var(--border);border-radius:6px";
+  el.innerHTML = `
+    <div>
+      <span style="font-weight:600;font-size:0.875rem">${(msg.event_type || "event").replace("_"," ").toUpperCase()}</span>
+      <span style="color:var(--text-secondary);font-size:0.75rem;margin-left:0.5rem">Player #${msg.player_id}</span>
+    </div>
+    <span style="font-family:'Rajdhani',sans-serif;color:${points >= 0 ? 'var(--accent-gold)' : 'var(--accent-red)'};font-size:1.1rem">${points >= 0 ? '+' : ''}${points} pts</span>`;
+  feed.prepend(el);
+
+  // Keep feed manageable
+  while (feed.children.length > 30) feed.removeChild(feed.lastChild);
+}
+
+function rankIndicator(username, newRank) {
+  const prev = lastRanks[username];
+  lastRanks[username] = newRank;
+  if (prev === undefined || prev === newRank) return '<span class="rank-same">—</span>';
+  if (newRank < prev) return '<span class="rank-up">▲</span>';
+  return '<span class="rank-down">▼</span>';
+}
+
+function updateMiniLeaderboard(entries) {
+  const el = document.getElementById("mini-leaderboard");
+  el.innerHTML = entries.slice(0, 6).map((e) => `
+    <div style="display:flex;align-items:center;gap:0.5rem;padding:0.4rem 0;border-bottom:1px solid var(--border);${e.username === user?.username ? 'background:rgba(245,166,35,0.05)' : ''}">
+      <span style="width:14px;font-size:0.75rem">${rankIndicator(e.username, e.rank)}</span>
+      <span style="font-family:'Rajdhani',sans-serif;font-size:1rem;width:22px;color:${e.rank===1?'var(--accent-gold)':e.rank===2?'#C0C0C0':e.rank===3?'#CD7F32':'var(--text-secondary)'}">${e.rank}</span>
+      <span style="flex:1;font-size:0.8125rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${e.username}${e.username===user?.username?' <span style="color:var(--accent-gold);font-size:0.7rem">(you)</span>':''}</span>
+      <span style="font-family:'Rajdhani',sans-serif;color:var(--accent-gold)">${e.total_points.toFixed(1)}</span>
+    </div>`).join("");
+
+  const mine = entries.find(e => e.username === user?.username);
+  if (mine) {
+    const scoreEl = document.getElementById("my-score");
+    const oldVal = parseFloat(scoreEl.textContent);
+    scoreEl.textContent = mine.total_points.toFixed(1);
+    if (mine.total_points !== oldVal) {
+      scoreEl.classList.remove("score-pop");
+      void scoreEl.offsetWidth; // restart animation
+      scoreEl.classList.add("score-pop");
+    }
+    document.getElementById("my-rank").innerHTML = `Rank <strong style="color:var(--accent-cyan)">#${mine.rank}</strong> of ${entries.length}`;
+  }
+}
+
+async function loadLeaderboardSnapshot() {
+  if (!currentContestId) return;
+  try {
+    const lb = await api.get(`/leaderboard/${currentContestId}`);
+    updateMiniLeaderboard(lb.entries);
+  } catch (_) {}
+}
+
+init();
+</script>
+</body>
+</html>

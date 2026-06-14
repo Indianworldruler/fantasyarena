@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FantasyArena — Profile</title>
+  <link rel="stylesheet" href="css/styles.css?v=4" />
+</head>
+<body>
+<div class="page">
+  <div class="container" style="max-width:640px">
+
+    <h2 style="margin-bottom:1.5rem">Profile &amp; Settings</h2>
+
+    <div class="card" style="margin-bottom:1.5rem">
+      <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1.5rem">
+        <div style="width:56px;height:56px;border-radius:50%;background:var(--accent-gold);color:#0B1120;display:flex;align-items:center;justify-content:center;font-family:'Rajdhani',sans-serif;font-size:1.5rem;font-weight:700;flex-shrink:0" id="avatar-letter">U</div>
+        <div>
+          <div style="font-family:'Rajdhani',sans-serif;font-size:1.4rem;font-weight:700" id="profile-username">—</div>
+          <div style="font-size:0.8125rem;color:var(--text-secondary)" id="profile-role"></div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Full Name</label>
+        <input id="p-fullname" type="text" class="form-control" placeholder="Your full name" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input id="p-email" type="email" class="form-control" placeholder="you@email.com" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Username</label>
+        <input id="p-username" type="text" class="form-control" disabled style="opacity:0.6" />
+        <div style="font-size:0.75rem;color:var(--text-muted);margin-top:0.3rem">Username cannot be changed.</div>
+      </div>
+
+      <button id="save-profile-btn" class="btn btn-primary">Save Changes</button>
+      <div id="profile-success" style="display:none;margin-top:0.75rem;color:var(--accent-green);font-size:0.8125rem"></div>
+      <div id="profile-error"   style="display:none;margin-top:0.75rem;color:var(--accent-red);font-size:0.8125rem"></div>
+    </div>
+
+    <div class="card">
+      <h4 style="margin-bottom:1rem">Account Stats</h4>
+      <div class="stats-grid">
+        <div class="stat-box">
+          <div class="stat-val" id="acc-balance">—</div>
+          <div class="stat-label">Wallet Balance</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-val" id="acc-contests">—</div>
+          <div class="stat-label">Contests Joined</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-val" id="acc-teams">—</div>
+          <div class="stat-label">Teams Created</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-val" id="acc-winnings">—</div>
+          <div class="stat-label">Total Winnings</div>
+        </div>
+      </div>
+      <div style="margin-top:1rem;font-size:0.8125rem;color:var(--text-secondary)">
+        Member since <span id="acc-joined">—</span>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script src="js/api.js?v=4"></script>
+<script src="js/toast.js?v=4"></script>
+<script src="js/nav.js?v=4"></script>
+<script>
+  buildNav("profile");
+
+  async function loadProfile() {
+    try {
+      const me = await api.get("/users/me");
+      document.getElementById("profile-username").textContent = me.username;
+      document.getElementById("avatar-letter").textContent = me.username.charAt(0).toUpperCase();
+      document.getElementById("profile-role").textContent = me.is_admin ? "Administrator" : "Player";
+      document.getElementById("p-fullname").value = me.full_name || "";
+      document.getElementById("p-email").value    = me.email || "";
+      document.getElementById("p-username").value = me.username;
+      document.getElementById("acc-joined").textContent = new Date(me.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
+    } catch (e) { showToast(e.message, "error"); }
+
+    try {
+      const wallet = await api.get("/wallet/balance");
+      document.getElementById("acc-balance").textContent = `₹${wallet.balance.toFixed(0)}`;
+    } catch (_) {}
+
+    try {
+      const summary = await api.get("/users/me/summary");
+      document.getElementById("acc-contests").textContent = summary.contests_joined;
+      document.getElementById("acc-teams").textContent    = summary.teams_created;
+      document.getElementById("acc-winnings").textContent = `₹${summary.total_winnings.toFixed(0)}`;
+    } catch (_) {}
+  }
+
+  document.getElementById("save-profile-btn").addEventListener("click", async () => {
+    const full_name = document.getElementById("p-fullname").value.trim();
+    const email     = document.getElementById("p-email").value.trim();
+    const successEl = document.getElementById("profile-success");
+    const errEl     = document.getElementById("profile-error");
+    successEl.style.display = "none";
+    errEl.style.display = "none";
+
+    if (!email) { errEl.textContent = "Email is required."; errEl.style.display = "block"; return; }
+
+    const btn = document.getElementById("save-profile-btn");
+    btn.disabled = true; btn.textContent = "Saving…";
+    try {
+      const updated = await api.patch("/users/me", { full_name, email });
+      const user = api.getUser();
+      user.username = updated.username;
+      api.setAuth(api.getToken(), user);
+      successEl.textContent = "Profile updated successfully!";
+      successEl.style.display = "block";
+      showToast("Profile updated", "success");
+    } catch (e) {
+      errEl.textContent = e.message; errEl.style.display = "block";
+    } finally {
+      btn.disabled = false; btn.textContent = "Save Changes";
+    }
+  });
+
+  loadProfile();
+</script>
+</body>
+</html>

@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FantasyArena — Leaderboard</title>
+  <link rel="stylesheet" href="css/styles.css?v=4" />
+</head>
+<body>
+<div class="page">
+  <div class="container">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem">
+      <h2>Leaderboard</h2>
+      <select id="contest-select" class="form-control" style="width:auto">
+        <option value="">— select contest —</option>
+      </select>
+    </div>
+
+    <div id="lb-header" style="display:none;margin-bottom:1rem" class="card card-sm">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span id="lb-contest-name" style="font-family:'Rajdhani',sans-serif;font-size:1.2rem;font-weight:700"></span>
+        <span class="badge badge-live"><span class="live-dot" style="margin-right:4px"></span>Live updates</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="table-wrap">
+        <table id="lb-table">
+          <thead>
+            <tr>
+              <th style="width:60px">Rank</th>
+              <th>Team</th>
+              <th>Player</th>
+              <th style="text-align:right">Points</th>
+              <th style="text-align:right">Prize</th>
+            </tr>
+          </thead>
+          <tbody id="lb-body">
+            <tr><td colspan="5" style="text-align:center;color:var(--text-secondary);padding:3rem">Select a contest to view leaderboard.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="js/api.js?v=4"></script>
+<script src="js/toast.js?v=4"></script>
+<script src="js/nav.js?v=4"></script>
+<script>
+  buildNav("leaderboard");
+  let ws = null;
+  const user = api.getUser();
+
+  async function loadContests() {
+    try {
+      const contests = await api.get("/contests");
+      const sel = document.getElementById("contest-select");
+      sel.innerHTML = '<option value="">— select contest —</option>' +
+        contests.map(c => `<option value="${c.id}">${c.name}</option>`).join("");
+
+      const params = new URLSearchParams(window.location.search);
+      const contestParam = params.get("contest");
+      if (contestParam) {
+        sel.value = contestParam;
+        sel.dispatchEvent(new Event("change"));
+      }
+    } catch (_) {}
+  }
+
+  document.getElementById("contest-select").addEventListener("change", async function() {
+    const contestId = this.value;
+    if (!contestId) return;
+    await loadLeaderboard(contestId);
+    connectWS(contestId);
+  });
+
+  async function loadLeaderboard(contestId) {
+    try {
+      const data = await api.get(`/leaderboard/${contestId}`);
+      renderLeaderboard(data);
+    } catch (e) { showToast(e.message, "error"); }
+  }
+
+  function renderLeaderboard(data) {
+    document.getElementById("lb-header").style.display = "block";
+    document.getElementById("lb-contest-name").textContent = data.contest_name;
+
+    const tbody = document.getElementById("lb-body");
+    if (!data.entries.length) {
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-secondary);padding:3rem">No entries yet.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = data.entries.map(e => `
+      <tr class="${e.rank <= 3 ? 'rank-' + e.rank : ''}" style="${e.username === user?.username ? 'background:rgba(245,166,35,0.06)' : ''}">
+        <td><strong>${e.rank}</strong></td>
+        <td>${e.team_name}</td>
+        <td style="color:var(--text-secondary)">${e.username}${e.username === user?.username ? ' <span style="color:var(--accent-gold);font-size:0.7rem">(you)</span>' : ''}</td>
+        <td style="text-align:right;font-family:'Rajdhani',sans-serif;font-size:1.1rem;color:var(--accent-gold)">${e.total_points.toFixed(1)}</td>
+        <td style="text-align:right;color:var(--accent-green)">₹${e.prize_won.toFixed(0)}</td>
+      </tr>`).join("");
+  }
+
+  function connectWS(contestId) {
+    if (ws) ws.close();
+    ws = new WebSocket(`ws://localhost:8000/ws/leaderboard/${contestId}`);
+    ws.onmessage = (e) => {
+      const msg = JSON.parse(e.data);
+      if (msg.type === "leaderboard_update") {
+        renderLeaderboard({ contest_name: document.getElementById("lb-contest-name").textContent, entries: msg.leaderboard });
+      }
+    };
+    ws.onclose = () => { setTimeout(() => connectWS(contestId), 3000); };
+  }
+
+  loadContests();
+</script>
+</body>
+</html>

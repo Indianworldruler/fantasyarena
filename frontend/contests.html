@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FantasyArena — Contests</title>
+  <link rel="stylesheet" href="css/styles.css?v=4" />
+</head>
+<body>
+
+<!-- ── Join Wizard Modal ────────────────────────────────────────────────── -->
+<div id="wizard-overlay" class="modal-overlay">
+  <div class="modal-box" style="max-width:740px">
+
+    <div class="modal-header">
+      <h3 id="wiz-title">Join Contest</h3>
+      <button class="modal-close" onclick="closeWizard()">✕</button>
+    </div>
+
+    <div class="modal-body">
+
+      <!-- Step indicator -->
+      <div class="steps" id="wiz-steps">
+        <div class="step active" id="step-ind-1"><div class="step-num">1</div> Build Team</div>
+        <div class="step-line"></div>
+        <div class="step" id="step-ind-2"><div class="step-num">2</div> Review</div>
+        <div class="step-line"></div>
+        <div class="step" id="step-ind-3"><div class="step-num">3</div> Confirm</div>
+      </div>
+
+      <!-- Step 1: Build Team -->
+      <div id="wiz-step-1">
+        <div style="background:rgba(0,212,255,0.06);border:1px solid rgba(0,212,255,0.2);border-radius:var(--radius);padding:0.75rem 1rem;margin-bottom:1rem;font-size:0.8125rem">
+          <strong id="wiz-contest-name" style="color:var(--accent-cyan)"></strong>
+          <span id="wiz-contest-meta" style="color:var(--text-secondary);margin-left:0.5rem"></span>
+        </div>
+
+        <div style="display:flex;gap:0.75rem;flex-wrap:wrap;align-items:center;margin-bottom:0.875rem">
+          <div class="form-group" style="margin:0">
+            <input id="wiz-team-name" class="form-control" placeholder="Team name (e.g. My Dream XI)" style="width:200px" />
+          </div>
+          <select id="wiz-role-filter" class="form-control" style="width:auto">
+            <option value="">All Roles</option>
+            <option value="batsman">Batsman</option>
+            <option value="bowler">Bowler</option>
+            <option value="all_rounder">All-Rounder</option>
+            <option value="wicket_keeper">Wicket-Keeper</option>
+          </select>
+          <select id="wiz-squad-filter" class="form-control" style="width:auto">
+            <option value="">All Squads</option>
+          </select>
+          <div style="margin-left:auto;font-size:0.8125rem;color:var(--text-secondary);flex-shrink:0">
+            <span id="wiz-sel-count" style="color:var(--accent-cyan);font-weight:700">0</span>/11 selected
+          </div>
+        </div>
+
+        <!-- Credit bar -->
+        <div style="margin-bottom:0.875rem">
+          <div style="display:flex;justify-content:space-between;font-size:0.75rem;color:var(--text-secondary);margin-bottom:0.25rem">
+            <span>Credits used</span>
+            <span><strong id="wiz-credits" style="color:var(--accent-gold)">0</strong> / 100</span>
+          </div>
+          <div class="credit-bar-wrap"><div class="credit-bar" id="wiz-credit-bar" style="width:0%"></div></div>
+        </div>
+
+        <!-- Player grid -->
+        <div id="wiz-player-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:0.4rem;max-height:320px;overflow-y:auto;padding-right:0.25rem"></div>
+
+        <div style="margin-top:0.875rem;font-size:0.75rem;color:var(--text-secondary)">
+          💡 Click a player to select. Once selected, tap <strong>C</strong> or <strong>VC</strong> to assign captain/vice-captain. Need at least 1 wicket-keeper.
+        </div>
+      </div>
+
+      <!-- Step 2: Review -->
+      <div id="wiz-step-2" style="display:none">
+        <h4 style="margin-bottom:1rem">Review Your Team</h4>
+        <div id="wiz-review-list" style="margin-bottom:1.25rem"></div>
+        <div class="card card-sm" style="margin-bottom:1rem">
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;text-align:center;gap:0.5rem">
+            <div>
+              <div style="font-family:'Rajdhani',sans-serif;font-size:1.5rem;color:var(--accent-gold)" id="rev-credits">0</div>
+              <div style="font-size:0.7rem;color:var(--text-muted);text-transform:uppercase">Credits Used</div>
+            </div>
+            <div>
+              <div style="font-family:'Rajdhani',sans-serif;font-size:1.5rem;color:var(--accent-cyan)" id="rev-count">0</div>
+              <div style="font-size:0.7rem;color:var(--text-muted);text-transform:uppercase">Players</div>
+            </div>
+            <div>
+              <div id="rev-roles" style="font-size:0.75rem;color:var(--text-secondary);line-height:1.8;text-align:left"></div>
+            </div>
+          </div>
+        </div>
+        <div id="wiz-review-error" style="display:none;color:var(--accent-red);font-size:0.8125rem;margin-bottom:0.75rem;padding:0.625rem;background:rgba(239,68,68,0.08);border-radius:var(--radius)"></div>
+      </div>
+
+      <!-- Step 3: Confirm & Pay -->
+      <div id="wiz-step-3" style="display:none">
+        <h4 style="margin-bottom:1rem">Confirm &amp; Pay</h4>
+        <div class="card card-sm" style="margin-bottom:1rem">
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:0.5rem 0;border-bottom:1px solid var(--border)">
+            <span style="color:var(--text-secondary)">Contest</span>
+            <strong id="conf-contest"></strong>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:0.5rem 0;border-bottom:1px solid var(--border)">
+            <span style="color:var(--text-secondary)">Team</span>
+            <strong id="conf-team"></strong>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:0.5rem 0;border-bottom:1px solid var(--border)">
+            <span style="color:var(--text-secondary)">Entry Fee</span>
+            <strong id="conf-fee" style="color:var(--accent-red)"></strong>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:0.5rem 0">
+            <span style="color:var(--text-secondary)">Wallet Balance After</span>
+            <strong id="conf-balance-after" style="color:var(--accent-green)"></strong>
+          </div>
+        </div>
+        <div id="conf-error" style="display:none;color:var(--accent-red);font-size:0.8125rem;margin-bottom:0.75rem;padding:0.625rem;background:rgba(239,68,68,0.08);border-radius:var(--radius)"></div>
+      </div>
+
+      <!-- Step 4: Success -->
+      <div id="wiz-step-4" style="display:none">
+        <div class="success-screen">
+          <div class="success-icon">🏆</div>
+          <h3>You're In!</h3>
+          <p style="color:var(--text-secondary);margin-bottom:1.5rem" id="success-msg"></p>
+          <div style="display:flex;gap:0.75rem;justify-content:center;flex-wrap:wrap">
+            <a href="live-match.html" class="btn btn-primary" id="success-watch-link">Watch Live →</a>
+            <a href="leaderboard.html" class="btn btn-secondary" id="success-lb-link">Leaderboard</a>
+            <button onclick="closeWizard()" class="btn btn-secondary">Close</button>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /modal-body -->
+
+    <div class="modal-footer" id="wiz-footer">
+      <button class="btn btn-secondary" id="wiz-back-btn" onclick="wizBack()" style="display:none">← Back</button>
+      <button class="btn btn-primary" id="wiz-next-btn" onclick="wizNext()">Next →</button>
+    </div>
+
+  </div>
+</div>
+<!-- ── End Wizard ─────────────────────────────────────────────────────────── -->
+
+<div class="page">
+  <div class="container">
+
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:0.75rem">
+      <div>
+        <h2>Contests</h2>
+        <p style="color:var(--text-secondary);font-size:0.875rem;margin-top:0.2rem">Pick a contest, build your team, and join — all in one flow.</p>
+      </div>
+      <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap">
+        <select id="filter-status" class="form-control" style="width:auto">
+          <option value="">All Status</option>
+          <option value="upcoming">Upcoming</option>
+          <option value="live">Live</option>
+          <option value="completed">Completed</option>
+        </select>
+        <button class="btn btn-secondary btn-sm" onclick="loadContests()">↻ Refresh</button>
+      </div>
+    </div>
+
+    <div id="contests-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:1rem">
+      <div class="skeleton" style="height:200px"></div>
+      <div class="skeleton" style="height:200px"></div>
+      <div class="skeleton" style="height:200px"></div>
+    </div>
+
+  </div>
+</div>
+
+<script src="js/api.js?v=4"></script>
+<script src="js/toast.js?v=4"></script>
+<script src="js/nav.js?v=4"></script>
+<script>
+buildNav("contests");
+
+// ── State ────────────────────────────────────────────────────────────────────
+let allPlayers   = [];
+let allContests  = [];
+let myTeams      = [];
+let joinedIds    = new Set();
+let wizContest   = null;
+let wizSelected  = [];   // { player }
+let wizCaptainId = null;
+let wizVcId      = null;
+let wizStep      = 1;
+let walletBalance = 0;
+
+// ── Load & render contests ────────────────────────────────────────────────────
+async function loadContests() {
+  try {
+    const [contests, teams, wallet] = await Promise.all([
+      api.get("/contests"),
+      api.get("/teams"),
+      api.get("/wallet/balance"),
+    ]);
+    allContests   = contests;
+    myTeams       = teams;
+    walletBalance = wallet.balance;
+
+    const filter = document.getElementById("filter-status").value;
+    joinedIds     = new Set(teams.map(t => t.contest_id));
+
+    const filtered = filter ? contests.filter(c => c.status === filter) : contests;
+    renderContests(filtered);
+  } catch (e) {
+    showToast(e.message, "error");
+  }
+}
+
+function statusBadge(s) {
+  const cls = { live: "badge-live", upcoming: "badge-upcoming", completed: "badge-done" };
+  return `<span class="badge ${cls[s]||'badge-done'}">${s==="live"?'<span class="live-dot" style="margin-right:4px"></span>':''}${s}</span>`;
+}
+
+function renderContests(contests) {
+  const grid = document.getElementById("contests-grid");
+  if (!contests.length) {
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><h3>No contests found</h3><p>Check back soon or ask an admin to create one.</p></div>`;
+    return;
+  }
+  grid.innerHTML = contests.map(c => {
+    const joined   = joinedIds.has(c.id);
+    const full     = c.current_teams >= c.max_teams;
+    const canJoin  = c.status !== "completed" && !joined && !full;
+    const pct      = Math.round((c.current_teams / c.max_teams) * 100);
+
+    return `
+      <div class="card ${joined ? 'contest-card-joined' : ''}" style="display:flex;flex-direction:column;gap:0.75rem">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:0.5rem">
+          <div style="min-width:0">
+            <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap">
+              <h4 style="margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.name}</h4>
+              ${joined ? '<span class="joined-badge">✓ Joined</span>' : ''}
+            </div>
+            <div style="font-size:0.8rem;color:var(--text-secondary);margin-top:0.2rem">${c.match_name}</div>
+          </div>
+          ${statusBadge(c.status)}
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.5rem;text-align:center">
+          <div>
+            <div style="font-family:'Rajdhani',sans-serif;font-size:1.2rem;color:var(--accent-gold)">₹${c.prize_pool.toLocaleString()}</div>
+            <div style="font-size:0.68rem;color:var(--text-muted);text-transform:uppercase">Prize Pool</div>
+          </div>
+          <div>
+            <div style="font-family:'Rajdhani',sans-serif;font-size:1.2rem">${c.entry_fee > 0 ? '₹'+c.entry_fee : 'Free'}</div>
+            <div style="font-size:0.68rem;color:var(--text-muted);text-transform:uppercase">Entry Fee</div>
+          </div>
+          <div>
+            <div style="font-family:'Rajdhani',sans-serif;font-size:1.2rem">${c.current_teams}/${c.max_teams}</div>
+            <div style="font-size:0.68rem;color:var(--text-muted);text-transform:uppercase">Teams</div>
+          </div>
+        </div>
+
+        <!-- Fill bar -->
+        <div>
+          <div class="credit-bar-wrap"><div class="credit-bar" style="width:${pct}%;background:${pct>80?'var(--accent-red)':'var(--accent-cyan)'}"></div></div>
+          <div style="font-size:0.7rem;color:var(--text-muted);margin-top:0.2rem">${pct}% full</div>
+        </div>
+
+        <div style="display:flex;gap:0.5rem;margin-top:auto;flex-wrap:wrap">
+          ${canJoin
+            ? `<button class="btn btn-primary btn-sm" onclick="openWizard(${c.id})" style="flex:1">Build Team &amp; Join →</button>`
+            : joined
+              ? `<a href="live-match.html?contest=${c.id}" class="btn btn-primary btn-sm" style="flex:1;text-align:center">▶ Watch Live</a>`
+              : full
+                ? `<button class="btn btn-secondary btn-sm" style="flex:1;cursor:default" disabled>Contest Full</button>`
+                : `<button class="btn btn-secondary btn-sm" style="flex:1;cursor:default" disabled>Closed</button>`
+          }
+          <a href="leaderboard.html?contest=${c.id}" class="btn btn-secondary btn-sm">Board</a>
+        </div>
+      </div>`;
+  }).join("");
+}
+
+document.getElementById("filter-status").addEventListener("change", () => {
+  const filter = document.getElementById("filter-status").value;
+  const filtered = filter ? allContests.filter(c => c.status === filter) : allContests;
+  renderContests(filtered);
+});
+
+// ── Wizard ────────────────────────────────────────────────────────────────────
+async function openWizard(contestId) {
+  wizContest   = allContests.find(c => c.id === contestId);
+  wizSelected  = [];
+  wizCaptainId = null;
+  wizVcId      = null;
+  wizStep      = 1;
+
+  document.getElementById("wiz-contest-name").textContent = wizContest.name;
+  document.getElementById("wiz-contest-meta").textContent =
+    `• Entry ₹${wizContest.entry_fee} • Prize ₹${wizContest.prize_pool.toLocaleString()}`;
+  document.getElementById("wiz-team-name").value = "";
+
+  document.getElementById("wizard-overlay").classList.add("open");
+  renderWizStep();
+
+  if (!allPlayers.length) {
+    try {
+      allPlayers = await api.get("/teams/players/all");
+      const squads = [...new Set(allPlayers.map(p => p.team_name))];
+      const sel = document.getElementById("wiz-squad-filter");
+      sel.innerHTML = '<option value="">All Squads</option>' +
+        squads.map(s => `<option value="${s}">${s}</option>`).join("");
+    } catch(e) { showToast("Failed to load players", "error"); }
+  }
+  renderWizPlayerGrid();
+}
+
+function closeWizard() {
+  document.getElementById("wizard-overlay").classList.remove("open");
+}
+
+function renderWizStep() {
+  [1,2,3,4].forEach(n => {
+    document.getElementById(`wiz-step-${n}`).style.display = n === wizStep ? "block" : "none";
+  });
+  // Step indicators
+  [1,2,3].forEach(n => {
+    const el = document.getElementById(`step-ind-${n}`);
+    el.className = "step" + (n < wizStep ? " done" : n === wizStep ? " active" : "");
+    el.querySelector(".step-num").textContent = n < wizStep ? "✓" : n;
+  });
+  // Footer buttons
+  const footer   = document.getElementById("wiz-footer");
+  const backBtn  = document.getElementById("wiz-back-btn");
+  const nextBtn  = document.getElementById("wiz-next-btn");
+  footer.style.display = wizStep === 4 ? "none" : "flex";
+  backBtn.style.display = wizStep > 1 ? "inline-flex" : "none";
+  if (wizStep === 1) { nextBtn.textContent = "Review Team →"; }
+  if (wizStep === 2) { nextBtn.textContent = "Confirm & Pay →"; }
+  if (wizStep === 3) { nextBtn.textContent = "🏆 Join Contest"; }
+}
+
+function wizCredits() {
+  return wizSelected.reduce((s, p) => s + p.credit_value, 0);
+}
+
+function renderWizPlayerGrid() {
+  const roleF  = document.getElementById("wiz-role-filter").value;
+  const squadF = document.getElementById("wiz-squad-filter").value;
+  const players = allPlayers.filter(p =>
+    (!roleF  || p.role === roleF) &&
+    (!squadF || p.team_name === squadF)
+  );
+
+  const credits = wizCredits();
+  document.getElementById("wiz-credits").textContent    = credits.toFixed(1);
+  document.getElementById("wiz-sel-count").textContent  = wizSelected.length;
+  const pct = Math.min(100, (credits / 100) * 100);
+  const bar = document.getElementById("wiz-credit-bar");
+  bar.style.width = pct + "%";
+  bar.className   = "credit-bar" + (credits > 100 ? " over" : "");
+
+  document.getElementById("wiz-player-grid").innerHTML = players.map(p => {
+    const isSel = wizSelected.find(s => s.id === p.id);
+    const isCap = wizCaptainId === p.id;
+    const isVC  = wizVcId === p.id;
+    const roleLabel = p.role.replace("_"," ");
+    return `
+      <div class="player-card-mini ${isSel ? 'selected' : ''} ${isCap ? 'cap-selected' : ''}"
+           onclick="wizTogglePlayer(${p.id})">
+        ${isCap ? '<span class="pm-badge c">C</span>' : isVC ? '<span class="pm-badge vc">VC</span>' : '<span style="width:22px;display:inline-block"></span>'}
+        <div style="flex:1;min-width:0">
+          <div class="pm-name" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.name}</div>
+          <div class="pm-role">${roleLabel} · ${p.team_name}</div>
+        </div>
+        <div class="pm-cr">${p.credit_value}cr</div>
+        ${isSel ? `
+          <div style="display:flex;gap:0.2rem" onclick="event.stopPropagation()">
+            <button class="btn btn-sm ${isCap?'btn-primary':'btn-secondary'}" style="padding:0.15rem 0.4rem;font-size:0.65rem" onclick="wizSetCap(${p.id})">C</button>
+            <button class="btn btn-sm ${isVC?'btn-primary':'btn-secondary'}"  style="padding:0.15rem 0.4rem;font-size:0.65rem" onclick="wizSetVC(${p.id})">VC</button>
+          </div>` : ''}
+      </div>`;
+  }).join("") || `<div style="color:var(--text-secondary);padding:1rem;grid-column:1/-1">No players match filter.</div>`;
+}
+
+function wizTogglePlayer(id) {
+  const player = allPlayers.find(p => p.id === id);
+  const idx    = wizSelected.findIndex(p => p.id === id);
+  if (idx >= 0) {
+    wizSelected.splice(idx, 1);
+    if (wizCaptainId === id) wizCaptainId = null;
+    if (wizVcId      === id) wizVcId      = null;
+  } else {
+    if (wizSelected.length >= 11) { showToast("Max 11 players", "error"); return; }
+    if (wizCredits() + player.credit_value > 100) { showToast("Not enough credits", "error"); return; }
+    wizSelected.push(player);
+  }
+  renderWizPlayerGrid();
+}
+
+function wizSetCap(id) {
+  if (wizVcId === id) wizVcId = null;
+  wizCaptainId = id;
+  renderWizPlayerGrid();
+}
+function wizSetVC(id) {
+  if (wizCaptainId === id) wizCaptainId = null;
+  wizVcId = id;
+  renderWizPlayerGrid();
+}
+
+document.getElementById("wiz-role-filter").addEventListener("change",  renderWizPlayerGrid);
+document.getElementById("wiz-squad-filter").addEventListener("change", renderWizPlayerGrid);
+
+function wizValidateStep1() {
+  const name = document.getElementById("wiz-team-name").value.trim();
+  if (!name)                    { showToast("Enter a team name", "error"); return false; }
+  if (wizSelected.length !== 11){ showToast(`Select ${11 - wizSelected.length} more player${wizSelected.length < 10 ? 's' : ''}`, "error"); return false; }
+  if (!wizCaptainId)            { showToast("Assign a captain (tap C)", "error"); return false; }
+  if (!wizVcId)                 { showToast("Assign a vice-captain (tap VC)", "error"); return false; }
+  const hasWK = wizSelected.some(p => p.role === "wicket_keeper");
+  if (!hasWK)                   { showToast("Team needs at least 1 wicket-keeper", "error"); return false; }
+  return true;
+}
+
+function renderReview() {
+  const roleCount = {};
+  wizSelected.forEach(p => {
+    const r = p.role.replace("_"," ");
+    roleCount[r] = (roleCount[r] || 0) + 1;
+  });
+
+  document.getElementById("rev-credits").textContent = wizCredits().toFixed(1);
+  document.getElementById("rev-count").textContent   = wizSelected.length;
+  document.getElementById("rev-roles").innerHTML     =
+    Object.entries(roleCount).map(([r,n]) => `<div>${n}× ${r}</div>`).join("");
+
+  const errEl = document.getElementById("wiz-review-error");
+  errEl.style.display = "none";
+
+  document.getElementById("wiz-review-list").innerHTML = wizSelected.map(p => {
+    const isCap = wizCaptainId === p.id;
+    const isVC  = wizVcId      === p.id;
+    return `
+      <div style="display:flex;align-items:center;gap:0.5rem;padding:0.4rem 0;border-bottom:1px solid var(--border);font-size:0.8125rem">
+        ${isCap ? '<span class="pm-badge c">C</span>'  : isVC ? '<span class="pm-badge vc">VC</span>' : '<span style="width:22px;display:inline-block"></span>'}
+        <span style="flex:1">${p.name}</span>
+        <span style="color:var(--text-muted);font-size:0.75rem">${p.role.replace("_"," ")} · ${p.team_name}</span>
+        <span style="color:var(--accent-gold);font-size:0.75rem">${p.credit_value}cr</span>
+      </div>`;
+  }).join("");
+}
+
+function renderConfirm() {
+  const teamName = document.getElementById("wiz-team-name").value.trim();
+  document.getElementById("conf-contest").textContent      = wizContest.name;
+  document.getElementById("conf-team").textContent         = teamName;
+  document.getElementById("conf-fee").textContent          = wizContest.entry_fee > 0 ? `−₹${wizContest.entry_fee}` : "Free";
+  const after = walletBalance - wizContest.entry_fee;
+  document.getElementById("conf-balance-after").textContent = `₹${after.toFixed(2)}`;
+  if (after < 0) {
+    document.getElementById("conf-balance-after").style.color = "var(--accent-red)";
+    document.getElementById("conf-error").textContent   = `Insufficient balance. You have ₹${walletBalance.toFixed(2)} but need ₹${wizContest.entry_fee}.`;
+    document.getElementById("conf-error").style.display = "block";
+  } else {
+    document.getElementById("conf-balance-after").style.color = "var(--accent-green)";
+    document.getElementById("conf-error").style.display = "none";
+  }
+}
+
+async function wizNext() {
+  if (wizStep === 1) {
+    if (!wizValidateStep1()) return;
+    wizStep = 2;
+    renderReview();
+    renderWizStep();
+    return;
+  }
+
+  if (wizStep === 2) {
+    wizStep = 3;
+    renderConfirm();
+    renderWizStep();
+    return;
+  }
+
+  if (wizStep === 3) {
+    const after = walletBalance - wizContest.entry_fee;
+    if (after < 0) { showToast("Insufficient wallet balance", "error"); return; }
+
+    const btn = document.getElementById("wiz-next-btn");
+    btn.disabled    = true;
+    btn.textContent = "Processing…";
+
+    try {
+      const teamName  = document.getElementById("wiz-team-name").value.trim();
+      const players   = wizSelected.map(p => ({
+        player_id:      p.id,
+        is_captain:     p.id === wizCaptainId,
+        is_vice_captain:p.id === wizVcId,
+      }));
+
+      // Step A: create team
+      const team = await api.post("/teams", {
+        name:       teamName,
+        contest_id: wizContest.id,
+        players,
+      });
+
+      // Step B: join contest
+      const res = await api.post(`/contests/${wizContest.id}/join`, { team_id: team.id });
+
+      walletBalance = res.wallet_balance_remaining;
+      const navWallet = document.getElementById("nav-wallet");
+      if (navWallet) navWallet.textContent = `₹ ${res.wallet_balance_remaining.toFixed(2)}`;
+      document.getElementById("success-msg").textContent =
+        `₹${res.entry_fee_deducted} deducted. Wallet balance: ₹${res.wallet_balance_remaining.toFixed(2)}. Good luck!`;
+      document.getElementById("success-watch-link").href = `live-match.html?contest=${wizContest.id}`;
+      document.getElementById("success-lb-link").href    = `leaderboard.html?contest=${wizContest.id}`;
+
+      wizStep = 4;
+      renderWizStep();
+      joinedIds.add(wizContest.id);
+      loadContests();
+    } catch(e) {
+      document.getElementById("conf-error").textContent   = e.message;
+      document.getElementById("conf-error").style.display = "block";
+    } finally {
+      btn.disabled    = false;
+      btn.textContent = "🏆 Join Contest";
+    }
+  }
+}
+
+function wizBack() {
+  if (wizStep > 1) { wizStep--; renderWizStep(); }
+  if (wizStep === 1) renderWizPlayerGrid();
+}
+
+// Close on overlay click
+document.getElementById("wizard-overlay").addEventListener("click", function(e) {
+  if (e.target === this) closeWizard();
+});
+
+loadContests();
+</script>
+</body>
+</html>

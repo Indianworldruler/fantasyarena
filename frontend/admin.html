@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FantasyArena — Admin Panel</title>
+  <link rel="stylesheet" href="css/styles.css?v=4" />
+</head>
+<body>
+<div class="page">
+  <div class="container">
+    <h2 style="margin-bottom:0.25rem">Admin Panel</h2>
+    <p style="color:var(--text-secondary);margin-bottom:1.5rem">Platform management &amp; match simulation</p>
+
+    <div style="display:flex;gap:0.5rem;margin-bottom:1.5rem;border-bottom:1px solid var(--border);padding-bottom:0.75rem;flex-wrap:wrap">
+      <button class="btn btn-primary btn-sm tab-btn" data-tab="contests">Contests</button>
+      <button class="btn btn-secondary btn-sm tab-btn" data-tab="matches">Matches</button>
+      <button class="btn btn-secondary btn-sm tab-btn" data-tab="users">Users</button>
+      <button class="btn btn-secondary btn-sm tab-btn" data-tab="teams">Teams</button>
+      <button class="btn btn-secondary btn-sm tab-btn" data-tab="transactions">Transactions</button>
+      <button class="btn btn-secondary btn-sm tab-btn" data-tab="metrics">Metrics</button>
+      <button class="btn btn-secondary btn-sm tab-btn" data-tab="logs">Logs</button>
+    </div>
+
+    <!-- CONTESTS TAB -->
+    <div id="tab-contests" class="tab-content">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-bottom:1.5rem">
+        <!-- Create Contest Form -->
+        <div class="card">
+          <h4 style="margin-bottom:1.25rem">Create New Contest</h4>
+          <div class="form-group">
+            <label class="form-label">Contest Name</label>
+            <input id="c-name" class="form-control" placeholder="India vs Australia T20" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Match Name</label>
+            <input id="c-match" class="form-control" placeholder="IND vs AUS - Mumbai Stadium" />
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem">
+            <div class="form-group">
+              <label class="form-label">Entry Fee (₹)</label>
+              <input id="c-fee" type="number" class="form-control" placeholder="50" min="0" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Prize Pool (₹)</label>
+              <input id="c-prize" type="number" class="form-control" placeholder="5000" min="0" />
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem">
+            <div class="form-group">
+              <label class="form-label">Max Teams</label>
+              <input id="c-max" type="number" class="form-control" placeholder="100" min="2" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Sport</label>
+              <select id="c-sport" class="form-control">
+                <option value="cricket">Cricket</option>
+                <option value="football">Football</option>
+                <option value="basketball">Basketball</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Start Date &amp; Time</label>
+            <input id="c-starts" type="datetime-local" class="form-control" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Description (optional)</label>
+            <input id="c-desc" class="form-control" placeholder="Grand finale contest..." />
+          </div>
+          <button class="btn btn-primary btn-full" onclick="createContest()">Create Contest</button>
+          <div id="c-error" style="display:none;margin-top:0.75rem;color:var(--accent-red);font-size:0.8125rem"></div>
+          <div id="c-success" style="display:none;margin-top:0.75rem;color:var(--accent-green);font-size:0.8125rem"></div>
+        </div>
+
+        <!-- Quick stats -->
+        <div>
+          <div class="card" style="margin-bottom:1rem">
+            <h4 style="margin-bottom:0.75rem">Quick Tips</h4>
+            <div style="font-size:0.8125rem;color:var(--text-secondary);line-height:1.8">
+              <div>✅ Entry Fee = 0 for free contests</div>
+              <div>✅ Prize Pool must be ≥ Entry Fee</div>
+              <div>✅ Max Teams = how many users can join</div>
+              <div>✅ After creating contest, go to <strong style="color:var(--text-primary)">Matches tab</strong> to create &amp; start a match</div>
+              <div>✅ Users can join from the <strong style="color:var(--text-primary)">Contests page</strong></div>
+            </div>
+          </div>
+          <div class="card" id="contest-stats-card">
+            <h4 style="margin-bottom:0.75rem">Contest Summary</h4>
+            <div id="contest-quick-stats" style="color:var(--text-secondary);font-size:0.875rem">Loading…</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Contest list -->
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+          <h4>All Contests</h4>
+          <div style="display:flex;align-items:center;gap:0.75rem">
+            <span id="contests-status" style="font-size:0.75rem;color:var(--text-secondary)"></span>
+            <button class="btn btn-secondary btn-sm" onclick="loadAdminContests()">↻ Refresh</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>ID</th><th>Name</th><th>Sport</th><th>Entry Fee</th><th>Prize Pool</th><th>Teams</th><th>Status</th><th>Actions</th></tr></thead>
+            <tbody id="contests-body"><tr><td colspan="8" style="text-align:center;color:var(--text-secondary);padding:2rem">Loading…</td></tr></tbody>
+          </table>
+        </div>
+        <div id="contests-debug" style="display:none;margin-top:0.75rem;padding:0.75rem;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-radius:var(--radius);font-size:0.8125rem;color:var(--accent-red)"></div>
+      </div>
+    </div>
+
+    <!-- MATCHES TAB -->
+    <div id="tab-matches" class="tab-content" style="display:none">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-bottom:1.5rem">
+        <div class="card">
+          <h4 style="margin-bottom:1rem">Create Match</h4>
+          <div class="form-group">
+            <label class="form-label">Match Name</label>
+            <input id="m-name" class="form-control" placeholder="IND vs AUS T20 Match 1" />
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem">
+            <div class="form-group">
+              <label class="form-label">Team A</label>
+              <input id="m-ta" class="form-control" placeholder="India" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Team B</label>
+              <input id="m-tb" class="form-control" placeholder="Australia" />
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Link to Contest</label>
+            <select id="m-contest" class="form-control"><option value="">None (unlinked)</option></select>
+          </div>
+          <button class="btn btn-primary btn-full" onclick="createMatch()">Create Match</button>
+          <div id="m-error" style="display:none;margin-top:0.75rem;color:var(--accent-red);font-size:0.8125rem"></div>
+        </div>
+
+        <div class="card">
+          <h4 style="margin-bottom:1rem">⚡ Trigger Live Event</h4>
+          <div class="form-group">
+            <label class="form-label">Live Match</label>
+            <select id="ev-match" class="form-control"><option value="">Select live match</option></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Player</label>
+            <select id="ev-player" class="form-control"><option value="">Select player</option></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Event Type</label>
+            <select id="ev-type" class="form-control">
+              <option value="wicket">🏏 Wicket (25 pts)</option>
+              <option value="six">6️⃣ Six (2 pts)</option>
+              <option value="four">4️⃣ Four (1 pt)</option>
+              <option value="run">🏃 Run (0.5 pts)</option>
+              <option value="catch">🤲 Catch (8 pts)</option>
+              <option value="stumping">🥅 Stumping (12 pts)</option>
+              <option value="maiden_over">⭕ Maiden Over (12 pts)</option>
+              <option value="run_out">🚫 Run Out (6 pts)</option>
+              <option value="bonus">⭐ Bonus (5 pts)</option>
+            </select>
+          </div>
+          <button class="btn btn-primary btn-full" onclick="triggerEvent()">⚡ Trigger Event</button>
+          <div id="ev-result" style="display:none;margin-top:0.75rem;padding:0.75rem;background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.2);border-radius:6px;font-size:0.8125rem;color:var(--accent-green)"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+          <h4>All Matches</h4>
+          <button class="btn btn-secondary btn-sm" onclick="loadMatches()">↻ Refresh</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>ID</th><th>Name</th><th>Teams</th><th>Status</th><th>Contest</th><th>Actions</th></tr></thead>
+            <tbody id="matches-body"><tr><td colspan="6" style="color:var(--text-secondary);text-align:center;padding:2rem">Loading…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- USERS TAB -->
+    <div id="tab-users" class="tab-content" style="display:none">
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:0.5rem">
+          <h4>All Users</h4>
+          <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap">
+            <input id="promote-username" class="form-control" style="width:180px" placeholder="username to promote" />
+            <button class="btn btn-secondary btn-sm" onclick="promoteUser()">Make Admin</button>
+            <button class="btn btn-secondary btn-sm" onclick="loadUsers()">↻ Refresh</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>ID</th><th>Username</th><th>Email</th><th>Balance</th><th>Admin</th><th>Active</th><th>Joined</th></tr></thead>
+            <tbody id="users-body"><tr><td colspan="7" style="text-align:center;color:var(--text-secondary);padding:2rem">Loading…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TEAMS TAB -->
+    <div id="tab-teams" class="tab-content" style="display:none">
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+          <h4>All Teams</h4>
+          <button class="btn btn-secondary btn-sm" onclick="loadTeams()">↻ Refresh</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>ID</th><th>Name</th><th>User ID</th><th>Contest</th><th>Credits</th><th>Points</th><th>Locked</th></tr></thead>
+            <tbody id="teams-body"><tr><td colspan="7" style="text-align:center;color:var(--text-secondary);padding:2rem">Loading…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TRANSACTIONS TAB -->
+    <div id="tab-transactions" class="tab-content" style="display:none">
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+          <h4>Recent Transactions</h4>
+          <button class="btn btn-secondary btn-sm" onclick="loadTransactions()">↻ Refresh</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>ID</th><th>User</th><th>Type</th><th>Amount</th><th>Status</th><th>Description</th><th>Date</th></tr></thead>
+            <tbody id="tx-body"><tr><td colspan="7" style="text-align:center;color:var(--text-secondary);padding:2rem">Loading…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- METRICS TAB -->
+    <div id="tab-metrics" class="tab-content" style="display:none">
+      <div class="stats-grid" style="margin-bottom:1.5rem" id="metrics-grid">
+        <div class="skeleton" style="height:90px"></div>
+        <div class="skeleton" style="height:90px"></div>
+        <div class="skeleton" style="height:90px"></div>
+        <div class="skeleton" style="height:90px"></div>
+      </div>
+      <div class="card">
+        <h4 style="margin-bottom:1rem">Route Performance</h4>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Route</th><th>Requests</th><th>Avg Latency (ms)</th></tr></thead>
+            <tbody id="metrics-routes-body"></tbody>
+          </table>
+        </div>
+      </div>
+      <div style="margin-top:1rem;text-align:right">
+        <button class="btn btn-secondary btn-sm" onclick="loadMetrics()">↻ Refresh</button>
+      </div>
+    </div>
+
+    <!-- LOGS TAB -->
+    <div id="tab-logs" class="tab-content" style="display:none">
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:0.5rem">
+          <h4>System Logs</h4>
+          <div style="display:flex;gap:0.5rem;align-items:center">
+            <select id="log-filter" class="form-control" style="width:auto">
+              <option value="">All levels</option>
+              <option value="ERROR">ERROR</option>
+              <option value="WARNING">WARNING</option>
+              <option value="INFO">INFO</option>
+            </select>
+            <button class="btn btn-secondary btn-sm" onclick="loadLogs()">↻ Refresh</button>
+          </div>
+        </div>
+        <div id="log-list" style="font-family:monospace;font-size:0.8rem;max-height:500px;overflow-y:auto;background:var(--bg-base);border:1px solid var(--border);border-radius:var(--radius);padding:1rem">
+          <div style="color:var(--text-muted)">Click Refresh to load logs.</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script src="js/api.js?v=4"></script>
+<script src="js/toast.js?v=4"></script>
+<script src="js/nav.js?v=4"></script>
+<script>
+  buildNav("admin");
+
+  const tabLoaders = {
+    contests:     loadAdminContests,
+    matches:      loadMatches,
+    users:        loadUsers,
+    teams:        loadTeams,
+    transactions: loadTransactions,
+    metrics:      loadMetrics,
+    logs:         loadLogs,
+  };
+
+  document.querySelectorAll(".tab-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".tab-content").forEach(t => t.style.display = "none");
+      document.querySelectorAll(".tab-btn").forEach(b => b.className = "btn btn-secondary btn-sm tab-btn");
+      btn.className = "btn btn-primary btn-sm tab-btn";
+      const tab = btn.dataset.tab;
+      document.getElementById(`tab-${tab}`).style.display = "block";
+      tabLoaders[tab]?.();
+    });
+  });
+
+  // ── Contests ───────────────────────────────────────────────────────────────
+  async function createContest() {
+    const name     = document.getElementById("c-name").value.trim();
+    const match_name = document.getElementById("c-match").value.trim();
+    const entry_fee  = parseFloat(document.getElementById("c-fee").value);
+    const prize_pool = parseFloat(document.getElementById("c-prize").value);
+    const max_teams  = parseInt(document.getElementById("c-max").value);
+    const sport      = document.getElementById("c-sport").value;
+    const starts_at  = document.getElementById("c-starts").value;
+    const description = document.getElementById("c-desc").value.trim();
+
+    const errEl = document.getElementById("c-error");
+    const sucEl = document.getElementById("c-success");
+    errEl.style.display = "none";
+    sucEl.style.display = "none";
+
+    if (!name || !match_name || !starts_at) {
+      errEl.textContent = "Contest name, match name and start time are required.";
+      errEl.style.display = "block"; return;
+    }
+    if (isNaN(entry_fee) || isNaN(prize_pool) || isNaN(max_teams)) {
+      errEl.textContent = "Entry fee, prize pool and max teams must be valid numbers.";
+      errEl.style.display = "block"; return;
+    }
+    if (prize_pool < entry_fee) {
+      errEl.textContent = "Prize pool must be greater than or equal to entry fee.";
+      errEl.style.display = "block"; return;
+    }
+    if (max_teams < 2) {
+      errEl.textContent = "Max teams must be at least 2.";
+      errEl.style.display = "block"; return;
+    }
+
+    const startsISO = new Date(starts_at).toISOString();
+
+    try {
+      const c = await api.post("/admin/contests", { name, match_name, entry_fee, prize_pool, max_teams, sport, starts_at: startsISO, description });
+      sucEl.textContent = `✓ Contest "${c.name}" created! (ID: ${c.id})`;
+      sucEl.style.display = "block";
+      // Clear form
+      ["c-name","c-match","c-fee","c-prize","c-max","c-starts","c-desc"].forEach(id => document.getElementById(id).value = "");
+      showToast(`Contest "${c.name}" created!`, "success");
+      loadAdminContests();
+    } catch (e) {
+      errEl.textContent = e.message;
+      errEl.style.display = "block";
+    }
+  }
+
+  async function loadAdminContests() {
+    const statusEl = document.getElementById("contests-status");
+    const debugEl  = document.getElementById("contests-debug");
+    debugEl.style.display = "none";
+    statusEl.textContent = "Loading…";
+
+    try {
+      const contests = await api.get("/admin/contests");
+
+      if (contests === undefined) {
+        statusEl.textContent = "";
+        debugEl.style.display = "block";
+        debugEl.textContent = "No response from server. You may have been logged out — try refreshing or signing in again.";
+        return;
+      }
+
+      statusEl.textContent = `${contests.length} contest${contests.length === 1 ? '' : 's'} · last updated ${new Date().toLocaleTimeString()}`;
+
+      // Quick stats
+      const live     = contests.filter(c => c.status === "live").length;
+      const upcoming = contests.filter(c => c.status === "upcoming").length;
+      const done     = contests.filter(c => c.status === "completed").length;
+      document.getElementById("contest-quick-stats").innerHTML = `
+        <div style="display:flex;gap:1rem;flex-wrap:wrap">
+          <div><span style="font-family:'Rajdhani',sans-serif;font-size:1.5rem;color:var(--accent-cyan)">${live}</span><br><span style="font-size:0.75rem;text-transform:uppercase">Live</span></div>
+          <div><span style="font-family:'Rajdhani',sans-serif;font-size:1.5rem;color:var(--accent-gold)">${upcoming}</span><br><span style="font-size:0.75rem;text-transform:uppercase">Upcoming</span></div>
+          <div><span style="font-family:'Rajdhani',sans-serif;font-size:1.5rem;color:var(--text-muted)">${done}</span><br><span style="font-size:0.75rem;text-transform:uppercase">Completed</span></div>
+        </div>`;
+
+      document.getElementById("contests-body").innerHTML = contests.length ? contests.map(c => `
+        <tr>
+          <td>${c.id}</td>
+          <td><strong>${c.name}</strong><br><span style="font-size:0.75rem;color:var(--text-secondary)">${c.match_name}</span></td>
+          <td>${c.sport}</td>
+          <td>₹${c.entry_fee}</td>
+          <td style="color:var(--accent-gold)">₹${c.prize_pool.toLocaleString()}</td>
+          <td>${c.current_teams}/${c.max_teams}</td>
+          <td><span class="badge ${c.status==='live'?'badge-live':c.status==='completed'?'badge-done':'badge-upcoming'}">${c.status}</span></td>
+          <td><a href="leaderboard.html?contest=${c.id}" class="btn btn-secondary btn-sm">Leaderboard</a></td>
+        </tr>`).join("")
+        : '<tr><td colspan="8" style="text-align:center;color:var(--text-secondary);padding:2rem">No contests yet. Create one using the form above, then click Refresh.</td></tr>';
+    } catch(e) {
+      statusEl.textContent = "";
+      debugEl.style.display = "block";
+      debugEl.textContent = `Error loading contests: ${e.message}`;
+      showToast(e.message, "error");
+    }
+  }
+
+  // ── Matches ────────────────────────────────────────────────────────────────
+  let playerList = [];
+
+  async function loadMatches() {
+    try {
+      const [matches, contests] = await Promise.all([
+        api.get("/admin/matches"),
+        api.get("/admin/contests"),
+      ]);
+
+      const liveMatches = matches.filter(m => m.status === "live" || m.status === "scheduled");
+      document.getElementById("ev-match").innerHTML =
+        '<option value="">Select live match</option>' +
+        liveMatches.map(m => `<option value="${m.id}">${m.name} (${m.status})</option>`).join("");
+
+      document.getElementById("m-contest").innerHTML =
+        '<option value="">None (unlinked)</option>' +
+        contests.filter(c => c.status !== "completed")
+          .map(c => `<option value="${c.id}">${c.name}</option>`).join("");
+
+      document.getElementById("matches-body").innerHTML = matches.length ? matches.map(m => `
+        <tr>
+          <td>${m.id}</td>
+          <td><strong>${m.name}</strong></td>
+          <td style="color:var(--text-secondary)">${m.team_a} vs ${m.team_b}</td>
+          <td><span class="badge ${m.status==='live'?'badge-live':m.status==='completed'?'badge-done':'badge-upcoming'}">${m.status}</span></td>
+          <td>${m.contest_id ? `#${m.contest_id}` : '—'}</td>
+          <td style="display:flex;gap:0.4rem;flex-wrap:wrap">
+            ${m.status==='scheduled' ? `<button class="btn btn-sm btn-primary" onclick="startMatch(${m.id})">▶ Start</button>` : ''}
+            ${m.status==='live' ? `<button class="btn btn-sm btn-secondary" onclick="completeMatch(${m.id})">✓ Complete</button>` : ''}
+            ${m.status==='completed' ? '<span style="color:var(--text-muted);font-size:0.8125rem">Finished</span>' : ''}
+          </td>
+        </tr>`).join("")
+        : '<tr><td colspan="6" style="text-align:center;color:var(--text-secondary);padding:2rem">No matches yet.</td></tr>';
+    } catch(e) { showToast(e.message, "error"); }
+  }
+
+  document.getElementById("ev-match").addEventListener("change", async () => {
+    if (playerList.length) {
+      document.getElementById("ev-player").innerHTML =
+        playerList.map(p => `<option value="${p.id}">${p.name} (${p.team_name})</option>`).join("");
+      return;
+    }
+    try {
+      playerList = await api.get("/teams/players/all");
+      document.getElementById("ev-player").innerHTML =
+        playerList.map(p => `<option value="${p.id}">${p.name} (${p.team_name})</option>`).join("");
+    } catch(_) {}
+  });
+
+  async function createMatch() {
+    const name      = document.getElementById("m-name").value.trim();
+    const team_a    = document.getElementById("m-ta").value.trim();
+    const team_b    = document.getElementById("m-tb").value.trim();
+    const contest_id = document.getElementById("m-contest").value || null;
+    const errEl = document.getElementById("m-error");
+    errEl.style.display = "none";
+
+    if (!name || !team_a || !team_b) {
+      errEl.textContent = "Match name, Team A and Team B are required.";
+      errEl.style.display = "block"; return;
+    }
+    try {
+      const m = await api.post("/admin/matches", { name, team_a, team_b, contest_id: contest_id ? parseInt(contest_id) : null });
+      showToast(`Match "${m.name}" created!`, "success");
+      ["m-name","m-ta","m-tb"].forEach(id => document.getElementById(id).value = "");
+      loadMatches();
+    } catch(e) { errEl.textContent = e.message; errEl.style.display = "block"; }
+  }
+
+  async function startMatch(id) {
+    try {
+      await api.post(`/admin/matches/${id}/start`, {});
+      showToast("Match started! Users can now see live updates.", "success");
+      loadMatches();
+    } catch(e) { showToast(e.message, "error"); }
+  }
+
+  async function completeMatch(id) {
+    if (!confirm("Complete this match? Prizes will be distributed automatically.")) return;
+    try {
+      await api.post(`/admin/matches/${id}/complete`, {});
+      showToast("Match completed. Prizes distributed!", "success");
+      loadMatches();
+    } catch(e) { showToast(e.message, "error"); }
+  }
+
+  async function triggerEvent() {
+    const match_id   = parseInt(document.getElementById("ev-match").value);
+    const player_id  = parseInt(document.getElementById("ev-player").value);
+    const event_type = document.getElementById("ev-type").value;
+
+    if (!match_id || !player_id) {
+      showToast("Select a live match and a player first.", "error"); return;
+    }
+    try {
+      const r = await api.post("/scoring/event", { match_id, player_id, event_type });
+      const el = document.getElementById("ev-result");
+      el.style.display = "block";
+      const playerName = playerList.find(p => p.id === player_id)?.name || `Player #${player_id}`;
+      el.textContent = `✓ ${event_type.replace("_"," ")} by ${playerName} — ${r.points_awarded} base pts. Leaderboard updated live.`;
+      showToast(`${r.points_awarded} pts awarded!`, "success");
+    } catch(e) { showToast(e.message, "error"); }
+  }
+
+  // ── Users ──────────────────────────────────────────────────────────────────
+  async function loadUsers() {
+    try {
+      const users = await api.get("/admin/users");
+      document.getElementById("users-body").innerHTML = users.length ? users.map(u => `
+        <tr>
+          <td>${u.id}</td>
+          <td><strong>${u.username}</strong></td>
+          <td style="color:var(--text-secondary)">${u.email}</td>
+          <td style="color:var(--accent-gold)">₹${u.wallet_balance?.toFixed(2) ?? "—"}</td>
+          <td>${u.is_admin ? '<span class="badge badge-live">Admin</span>' : '—'}</td>
+          <td>${u.is_active ? '<span class="badge badge-green">Active</span>' : '<span class="badge badge-done">Inactive</span>'}</td>
+          <td style="font-size:0.75rem;color:var(--text-secondary)">${new Date(u.created_at).toLocaleDateString()}</td>
+        </tr>`).join("")
+        : '<tr><td colspan="7" style="text-align:center;color:var(--text-secondary);padding:2rem">No users yet.</td></tr>';
+    } catch(e) { showToast(e.message, "error"); }
+  }
+
+  async function promoteUser() {
+    const username = document.getElementById("promote-username").value.trim();
+    if (!username) { showToast("Enter a username to promote.", "error"); return; }
+    try {
+      const r = await api.post(`/admin/promote/${username}`, {});
+      showToast(r.message, "success");
+      document.getElementById("promote-username").value = "";
+      loadUsers();
+    } catch(e) { showToast(e.message, "error"); }
+  }
+
+  // ── Teams ──────────────────────────────────────────────────────────────────
+  async function loadTeams() {
+    try {
+      const teams = await api.get("/admin/teams");
+      document.getElementById("teams-body").innerHTML = teams.length ? teams.map(t => `
+        <tr>
+          <td>${t.id}</td><td>${t.name}</td><td>${t.user_id}</td>
+          <td>${t.contest_id}</td><td>${t.total_credits_used}</td>
+          <td style="color:var(--accent-gold);font-family:'Rajdhani',sans-serif">${t.total_points.toFixed(1)}</td>
+          <td>${t.is_locked ? '<span class="badge badge-live">Locked</span>' : '<span class="badge badge-done">Open</span>'}</td>
+        </tr>`).join("")
+        : '<tr><td colspan="7" style="text-align:center;color:var(--text-secondary);padding:2rem">No teams yet.</td></tr>';
+    } catch(e) { showToast(e.message, "error"); }
+  }
+
+  // ── Transactions ───────────────────────────────────────────────────────────
+  async function loadTransactions() {
+    try {
+      const txs = await api.get("/admin/transactions");
+      document.getElementById("tx-body").innerHTML = txs.length ? txs.map(t => {
+        const isCredit = ["deposit","contest_winnings","refund"].includes(String(t.type).toLowerCase());
+        return `<tr>
+          <td>${t.id}</td><td>${t.user_id}</td>
+          <td><span class="badge ${isCredit ? 'badge-green' : 'badge-upcoming'}">${String(t.type).replace("_"," ")}</span></td>
+          <td style="color:${isCredit ? 'var(--accent-green)' : 'var(--accent-red)'}">${isCredit ? '+' : '-'}₹${t.amount.toFixed(2)}</td>
+          <td><span class="badge badge-green">${t.status}</span></td>
+          <td style="font-size:0.75rem;color:var(--text-secondary)">${t.description || "—"}</td>
+          <td style="font-size:0.75rem;color:var(--text-secondary)">${new Date(t.created_at).toLocaleString()}</td>
+        </tr>`;
+      }).join("")
+        : '<tr><td colspan="7" style="text-align:center;color:var(--text-secondary);padding:2rem">No transactions yet.</td></tr>';
+    } catch(e) { showToast(e.message, "error"); }
+  }
+
+  // ── Metrics ────────────────────────────────────────────────────────────────
+  async function loadMetrics() {
+    try {
+      const m = await api.get("/admin/metrics");
+      const db = m.db || {};
+      document.getElementById("metrics-grid").innerHTML = `
+        <div class="stat-box"><div class="stat-val">${db.users ?? 0}</div><div class="stat-label">Users</div></div>
+        <div class="stat-box"><div class="stat-val">${db.contests ?? 0}</div><div class="stat-label">Contests</div></div>
+        <div class="stat-box"><div class="stat-val">${db.teams ?? 0}</div><div class="stat-label">Teams</div></div>
+        <div class="stat-box"><div class="stat-val">${db.live_matches ?? 0}</div><div class="stat-label">Live Matches</div></div>
+        <div class="stat-box"><div class="stat-val">${m.total_requests ?? 0}</div><div class="stat-label">API Requests</div></div>
+        <div class="stat-box"><div class="stat-val">${m.error_rate_pct ?? 0}%</div><div class="stat-label">Error Rate</div></div>
+        <div class="stat-box"><div class="stat-val">${Math.round(m.uptime_seconds ?? 0)}s</div><div class="stat-label">Uptime</div></div>
+        <div class="stat-box"><div class="stat-val">${db.transactions ?? 0}</div><div class="stat-label">Transactions</div></div>`;
+
+      const routes   = m.requests_by_route || {};
+      const latencies = m.avg_latency_ms || {};
+      document.getElementById("metrics-routes-body").innerHTML =
+        Object.entries(routes).length
+          ? Object.entries(routes).map(([route, count]) => `
+              <tr>
+                <td style="font-family:monospace;font-size:0.8125rem">${route}</td>
+                <td>${count}</td>
+                <td>${latencies[route] ?? "—"}</td>
+              </tr>`).join("")
+          : '<tr><td colspan="3" style="color:var(--text-secondary);text-align:center">No data yet.</td></tr>';
+    } catch(e) { showToast(e.message, "error"); }
+  }
+
+  // ── Logs ───────────────────────────────────────────────────────────────────
+  async function loadLogs() {
+    try {
+      const data   = await api.get("/admin/logs?limit=50");
+      const filter = document.getElementById("log-filter").value;
+      const logs   = data.logs.filter(l => !filter || l.level === filter).reverse();
+      const colors = { ERROR: "var(--accent-red)", WARNING: "var(--accent-gold)", INFO: "var(--text-secondary)" };
+      document.getElementById("log-list").innerHTML = logs.length
+        ? logs.map(l => `
+            <div style="margin-bottom:0.3rem;color:${colors[l.level] || 'var(--text-primary)'}">
+              <span style="color:var(--text-muted)">${l.ts?.slice(11, 19)}</span>
+              <span style="margin:0 0.5rem;font-weight:700">[${l.level}]</span>
+              <span style="color:var(--text-secondary)">${l.service}</span>
+              <span style="margin-left:0.5rem">${l.msg}</span>
+            </div>`).join("")
+        : '<div style="color:var(--text-muted)">No logs found.</div>';
+    } catch(e) { showToast(e.message, "error"); }
+  }
+
+  document.getElementById("log-filter").addEventListener("change", loadLogs);
+
+  // Set default datetime to now + 1 hour
+  const dt = new Date(Date.now() + 3600000);
+  dt.setSeconds(0, 0);
+  document.getElementById("c-starts").value = dt.toISOString().slice(0, 16);
+
+  // Load default tab
+  loadAdminContests();
+</script>
+</body>
+</html>

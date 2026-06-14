@@ -1,0 +1,6 @@
+{
+  "python.defaultInterpreterPath": "/Users/parthsahani/Desktop/fantasyarena/backend/venv/bin/python",
+  "python.analysis.extraPaths": [
+    "/Users/parthsahani/Desktop/fantasyarena/backend"
+  ]
+}

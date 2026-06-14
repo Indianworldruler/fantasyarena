@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FantasyArena — First Time Setup</title>
+  <link rel="stylesheet" href="css/styles.css?v=4" />
+</head>
+<body>
+  <div class="auth-page">
+    <div class="auth-card card">
+      <div class="auth-logo">
+        <h1>Fantasy<span>Arena</span></h1>
+        <p style="color:var(--accent-cyan);font-weight:600">First Time Setup</p>
+      </div>
+
+      <div style="background:rgba(245,166,35,0.08);border:1px solid rgba(245,166,35,0.25);border-radius:var(--radius);padding:0.875rem;margin-bottom:1.5rem;font-size:0.8125rem;color:var(--accent-gold)">
+        ⚡ No admin account exists yet. Create the first admin account to get started.
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Username</label>
+        <input id="s-username" type="text" class="form-control" placeholder="admin" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Full Name</label>
+        <input id="s-fullname" type="text" class="form-control" placeholder="Your name" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input id="s-email" type="email" class="form-control" placeholder="admin@example.com" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input id="s-password" type="password" class="form-control" placeholder="At least 6 characters" />
+      </div>
+
+      <button id="setup-btn" class="btn btn-primary btn-full btn-lg">Create Admin Account</button>
+      <div id="setup-error" style="display:none;margin-top:0.875rem;color:var(--accent-red);font-size:0.875rem;text-align:center"></div>
+
+      <p style="text-align:center;margin-top:1rem;font-size:0.8125rem;color:var(--text-secondary)">
+        Already have an account? <a href="index.html">Sign in</a>
+      </p>
+    </div>
+  </div>
+
+  <script src="js/api.js?v=4"></script>
+  <script src="js/toast.js?v=4"></script>
+  <script>
+    // If already logged in, go to dashboard
+    if (api.isLoggedIn()) window.location.href = "dashboard.html";
+
+    // Check if admin already exists — redirect to login if so
+    fetch("http://localhost:8000/admin/setup/status")
+      .then(r => r.json())
+      .then(d => {
+        if (d.admin_exists) window.location.href = "index.html";
+      })
+      .catch(() => {});
+
+    document.getElementById("setup-btn").addEventListener("click", async () => {
+      const username  = document.getElementById("s-username").value.trim();
+      const full_name = document.getElementById("s-fullname").value.trim();
+      const email     = document.getElementById("s-email").value.trim();
+      const password  = document.getElementById("s-password").value;
+      const errEl     = document.getElementById("setup-error");
+      errEl.style.display = "none";
+
+      if (!username || !email || !password) {
+        errEl.textContent = "Username, email and password are required.";
+        errEl.style.display = "block";
+        return;
+      }
+
+      const btn = document.getElementById("setup-btn");
+      btn.disabled = true;
+      btn.textContent = "Creating admin account…";
+
+      try {
+        const data = await fetch("http://localhost:8000/admin/setup/first-admin", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username, email, password, full_name }),
+        }).then(async r => {
+          const body = await r.json();
+          if (!r.ok) throw new Error(body.detail || "Setup failed");
+          return body;
+        });
+
+        api.setAuth(data.access_token, {
+          id: data.user_id,
+          username: data.username,
+          is_admin: true,
+        });
+        showToast("Admin account created! Redirecting…", "success");
+        setTimeout(() => window.location.href = "admin.html", 1000);
+      } catch (e) {
+        errEl.textContent = e.message;
+        errEl.style.display = "block";
+        btn.disabled = false;
+        btn.textContent = "Create Admin Account";
+      }
+    });
+
+    document.getElementById("s-password").addEventListener("keydown", e => {
+      if (e.key === "Enter") document.getElementById("setup-btn").click();
+    });
+  </script>
+</body>
+</html>

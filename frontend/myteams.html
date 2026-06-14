@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FantasyArena — My Teams</title>
+  <link rel="stylesheet" href="css/styles.css?v=4" />
+</head>
+<body>
+
+<!-- Team detail modal -->
+<div id="team-modal" class="modal-overlay">
+  <div class="modal-box" style="max-width:560px">
+    <div class="modal-header">
+      <h3 id="tm-title">Team Details</h3>
+      <button class="modal-close" onclick="closeTeamModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="tm-meta" style="display:flex;gap:1rem;margin-bottom:1rem;flex-wrap:wrap"></div>
+      <div id="tm-players"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeTeamModal()">Close</button>
+      <a id="tm-leaderboard-link" href="leaderboard.html" class="btn btn-secondary">View Leaderboard</a>
+      <button id="tm-delete-btn" class="btn btn-danger" onclick="deleteCurrentTeam()">Delete Team</button>
+    </div>
+  </div>
+</div>
+
+<div class="page">
+  <div class="container">
+
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:0.5rem">
+      <div>
+        <h2 style="margin-bottom:0.2rem">My Teams</h2>
+        <p style="color:var(--text-secondary);font-size:0.875rem">All fantasy teams you've built across contests.</p>
+      </div>
+      <a href="contests.html" class="btn btn-primary">+ Build New Team</a>
+    </div>
+
+    <div id="teams-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1rem">
+      <div class="skeleton" style="height:160px"></div>
+      <div class="skeleton" style="height:160px"></div>
+    </div>
+
+  </div>
+</div>
+
+<script src="js/api.js?v=4"></script>
+<script src="js/toast.js?v=4"></script>
+<script src="js/nav.js?v=4"></script>
+<script>
+buildNav("contests");
+
+let myTeams = [];
+let activeTeamId = null;
+
+const roleIcons = {
+  batsman: "🏏", bowler: "🎯", all_rounder: "⚡", wicket_keeper: "🧤",
+};
+
+async function loadTeams() {
+  try {
+    myTeams = await api.get("/teams");
+    renderTeams();
+  } catch (e) { showToast(e.message, "error"); }
+}
+
+function renderTeams() {
+  const grid = document.getElementById("teams-grid");
+  if (!myTeams.length) {
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1">
+      <h3>No teams yet</h3>
+      <p>Build your first fantasy team from the Contests page.</p>
+      <a href="contests.html" class="btn btn-primary btn-sm" style="margin-top:0.75rem">Browse Contests</a>
+    </div>`;
+    return;
+  }
+
+  grid.innerHTML = myTeams.map(t => {
+    const captain = t.players.find(p => p.is_captain);
+    const vc      = t.players.find(p => p.is_vice_captain);
+    return `
+      <div class="card" style="display:flex;flex-direction:column;gap:0.75rem;cursor:pointer" onclick="openTeamModal(${t.id})">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:0.5rem">
+          <div style="min-width:0">
+            <h4 style="margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t.name}</h4>
+            <div style="font-size:0.75rem;color:var(--text-secondary);margin-top:0.2rem">Contest #${t.contest_id}</div>
+          </div>
+          ${t.is_locked
+            ? '<span class="joined-badge">✓ Joined</span>'
+            : '<span class="badge badge-upcoming">Not Joined</span>'}
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;text-align:center">
+          <div>
+            <div style="font-family:'Rajdhani',sans-serif;font-size:1.4rem;color:var(--accent-gold)">${t.total_points.toFixed(1)}</div>
+            <div style="font-size:0.68rem;color:var(--text-muted);text-transform:uppercase">Points</div>
+          </div>
+          <div>
+            <div style="font-family:'Rajdhani',sans-serif;font-size:1.4rem">${t.total_credits_used}</div>
+            <div style="font-size:0.68rem;color:var(--text-muted);text-transform:uppercase">Credits</div>
+          </div>
+        </div>
+
+        <div style="font-size:0.8125rem;color:var(--text-secondary)">
+          ${captain ? `<div>👑 C: ${captain.player_name}</div>` : ''}
+          ${vc ? `<div>🥈 VC: ${vc.player_name}</div>` : ''}
+        </div>
+
+        <div style="margin-top:auto;font-size:0.7rem;color:var(--text-muted)">Click to view full squad →</div>
+      </div>`;
+  }).join("");
+}
+
+function openTeamModal(teamId) {
+  const t = myTeams.find(x => x.id === teamId);
+  if (!t) return;
+  activeTeamId = teamId;
+
+  document.getElementById("tm-title").textContent = t.name;
+  document.getElementById("tm-leaderboard-link").href = `leaderboard.html?contest=${t.contest_id}`;
+
+  document.getElementById("tm-meta").innerHTML = `
+    <div class="card card-sm" style="flex:1;text-align:center;padding:0.6rem">
+      <div style="font-family:'Rajdhani',sans-serif;font-size:1.3rem;color:var(--accent-gold)">${t.total_points.toFixed(1)}</div>
+      <div style="font-size:0.68rem;color:var(--text-muted);text-transform:uppercase">Total Points</div>
+    </div>
+    <div class="card card-sm" style="flex:1;text-align:center;padding:0.6rem">
+      <div style="font-family:'Rajdhani',sans-serif;font-size:1.3rem">${t.total_credits_used} / 100</div>
+      <div style="font-size:0.68rem;color:var(--text-muted);text-transform:uppercase">Credits Used</div>
+    </div>
+    <div class="card card-sm" style="flex:1;text-align:center;padding:0.6rem">
+      <div style="font-size:0.9rem;margin-top:0.15rem">${t.is_locked ? '<span style="color:var(--accent-green)">✓ Joined</span>' : '<span style="color:var(--accent-gold)">Not Joined</span>'}</div>
+      <div style="font-size:0.68rem;color:var(--text-muted);text-transform:uppercase;margin-top:0.1rem">Status</div>
+    </div>`;
+
+  document.getElementById("tm-players").innerHTML = `
+    <h4 style="margin-bottom:0.5rem;font-size:0.9rem">Squad (${t.players.length})</h4>
+    <div style="display:flex;flex-direction:column;gap:0.3rem;max-height:320px;overflow-y:auto">
+      ${t.players.map(p => `
+        <div style="display:flex;align-items:center;gap:0.5rem;padding:0.45rem 0.6rem;background:var(--bg-input);border-radius:var(--radius);font-size:0.8125rem">
+          ${p.is_captain ? '<span class="pm-badge c">C</span>' : p.is_vice_captain ? '<span class="pm-badge vc">VC</span>' : '<span style="width:22px;display:inline-block"></span>'}
+          <span style="font-size:1rem">${roleIcons[p.role] || ''}</span>
+          <span style="flex:1">${p.player_name}</span>
+          <span style="color:var(--text-muted);font-size:0.7rem">${p.team_name}</span>
+          <span style="color:var(--accent-gold);font-weight:600">${p.points_earned.toFixed(1)} pts</span>
+        </div>`).join("")}
+    </div>`;
+
+  const deleteBtn = document.getElementById("tm-delete-btn");
+  if (t.is_locked) {
+    deleteBtn.disabled = true;
+    deleteBtn.title = "Locked teams (already joined a contest) cannot be deleted";
+    deleteBtn.textContent = "🔒 Locked (cannot delete)";
+  } else {
+    deleteBtn.disabled = false;
+    deleteBtn.textContent = "Delete Team";
+  }
+
+  document.getElementById("team-modal").classList.add("open");
+}
+
+function closeTeamModal() {
+  document.getElementById("team-modal").classList.remove("open");
+  activeTeamId = null;
+}
+
+async function deleteCurrentTeam() {
+  if (!activeTeamId) return;
+  const t = myTeams.find(x => x.id === activeTeamId);
+  if (!confirm(`Delete team "${t.name}"? This cannot be undone.`)) return;
+
+  try {
+    await api.delete(`/teams/${activeTeamId}`);
+    showToast("Team deleted", "success");
+    closeTeamModal();
+    loadTeams();
+  } catch (e) { showToast(e.message, "error"); }
+}
+
+document.getElementById("team-modal").addEventListener("click", function(e) {
+  if (e.target === this) closeTeamModal();
+});
+
+loadTeams();
+</script>
+</body>
+</html>

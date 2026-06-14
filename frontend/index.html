@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FantasyArena — Sign In</title>
+  <link rel="stylesheet" href="css/styles.css?v=4" />
+</head>
+<body>
+  <div class="auth-page">
+    <div class="auth-card card">
+      <div class="auth-logo">
+        <h1>Fantasy<span>Arena</span></h1>
+        <p>Build your squad. Dominate the contest.</p>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Username</label>
+        <input id="login-username" type="text" class="form-control" placeholder="Enter username" autocomplete="username" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input id="login-password" type="password" class="form-control" placeholder="Enter password" autocomplete="current-password" />
+      </div>
+
+      <button id="login-btn" class="btn btn-primary btn-full btn-lg">Sign In</button>
+      <div id="login-error" style="display:none;margin-top:0.875rem;color:var(--accent-red);font-size:0.875rem;text-align:center"></div>
+
+      <div class="divider"></div>
+
+      <p style="text-align:center;font-size:0.875rem;color:var(--text-secondary)">
+        New here? <a href="register.html">Create account</a>
+      </p>
+      <p style="text-align:center;font-size:0.8125rem;color:var(--text-muted);margin-top:0.5rem">
+        First time? <a href="setup.html" style="color:var(--accent-gold)">Set up admin account →</a>
+      </p>
+    </div>
+  </div>
+
+  <script src="js/api.js?v=4"></script>
+  <script src="js/toast.js?v=4"></script>
+  <script>
+    if (api.isLoggedIn()) window.location.href = "dashboard.html";
+
+    // Auto-redirect to setup if no admin exists
+    fetch("http://localhost:8000/admin/setup/status")
+      .then(r => r.json())
+      .then(d => {
+        if (!d.admin_exists) {
+          // Show a banner instead of auto-redirect so user can still log in
+          const banner = document.createElement("div");
+          banner.style.cssText = "background:rgba(245,166,35,0.1);border:1px solid rgba(245,166,35,0.3);border-radius:8px;padding:0.75rem 1rem;margin-bottom:1rem;font-size:0.8125rem;color:var(--accent-gold);text-align:center";
+          banner.innerHTML = '⚡ No admin yet. <a href="setup.html" style="color:var(--accent-gold);font-weight:700;text-decoration:underline">Create admin account first →</a>';
+          document.querySelector(".auth-card").prepend(banner);
+        }
+      })
+      .catch(() => {});
+
+    document.getElementById("login-btn").addEventListener("click", async () => {
+      const username = document.getElementById("login-username").value.trim();
+      const password = document.getElementById("login-password").value;
+      const errEl    = document.getElementById("login-error");
+      errEl.style.display = "none";
+
+      if (!username || !password) {
+        errEl.textContent = "Username and password are required.";
+        errEl.style.display = "block";
+        return;
+      }
+
+      const btn = document.getElementById("login-btn");
+      btn.disabled = true;
+      btn.textContent = "Signing in…";
+
+      try {
+        const data = await fetch("http://localhost:8000/auth/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username, password }),
+        }).then(async r => {
+          const body = await r.json();
+          if (!r.ok) throw new Error(body.detail || "Login failed");
+          return body;
+        });
+
+        api.setAuth(data.access_token, {
+          id: data.user_id,
+          username: data.username,
+          is_admin: data.is_admin,
+        });
+        window.location.href = "dashboard.html";
+      } catch (e) {
+        errEl.textContent = e.message;
+        errEl.style.display = "block";
+        btn.disabled = false;
+        btn.textContent = "Sign In";
+      }
+    });
+
+    document.getElementById("login-password").addEventListener("keydown", e => {
+      if (e.key === "Enter") document.getElementById("login-btn").click();
+    });
+  </script>
+</body>
+</html>
