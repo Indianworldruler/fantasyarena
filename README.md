@@ -6,6 +6,9 @@ Backend API:
 
 https://fantasyarena-euzq.onrender.com
 
+IF YOU DON'T UNDERSTAND STEPS THEN REFER THE SCREENSHOTS IN THE DOCUMENTATION:
+https://docs.google.com/document/d/1jg2-l1Yr9yDWzrhStNamG4C0sZuTrI8JeOHDPQkpPsw/edit?tab=t.0
+
 Firstly open the backend link in the browser and wait for the backend to run.
 You'll receive something like this: {"message":"FantasyArena API is running","docs":"/docs","health":"/health","frontend":"/app"}
 This means backend is running
@@ -43,4 +46,5 @@ password: admin123
 13. Now navigate back to the Admin tab and scroll below and end/finish the match. After that the top player gets rewarded. (You can login back to user and view notifications and view your wallet for the same).
 
 14. Thats it. You experience a application like dream 11. Make your team, and based on yout luck you win. Khelegi India Jitegi India.
+
 
