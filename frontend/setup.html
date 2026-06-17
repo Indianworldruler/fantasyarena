@@ -54,7 +54,7 @@
     if (api.isLoggedIn()) window.location.href = "dashboard.html";
 
     // Check if admin already exists — redirect to login if so
-    fetch("http://localhost:8000/admin/setup/status")
+    fetch(`${BASE_URL}/admin/setup/status`)
       .then(r => r.json())
       .then(d => {
         if (d.admin_exists) window.location.href = "index.html";
@@ -80,7 +80,7 @@
       btn.textContent = "Creating admin account…";
 
       try {
-        const data = await fetch("http://localhost:8000/admin/setup/first-admin", {
+        const data = await fetch(`${BASE_URL}/admin/setup/first-admin`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ username, email, password, full_name }),
