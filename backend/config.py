@@ -9,8 +9,7 @@ class Settings:
     DEBUG: bool = os.getenv("DEBUG", "true").lower() == "true"
 
     # SQLite
-    DATABASE_URL: str = f"sqlite:///{BASE_DIR}/fantasyarena.db"
-
+    DATABASE_URL: str = f"sqlite:///{BASE_DIR}/fantasyarena_faculty.db"
     # JWT
     JWT_SECRET: str = os.getenv("JWT_SECRET", "fantasyarena-super-secret-key-change-in-prod")
     JWT_ALGORITHM: str = "HS256"
