@@ -52,71 +52,102 @@
 <script src="js/nav.js?v=4"></script>
 <script>
   buildNav("leaderboard");
-  let ws = null;
-  const user = api.getUser();
 
-  async function loadContests() {
-    try {
-      const contests = await api.get("/contests");
-      const sel = document.getElementById("contest-select");
-      sel.innerHTML = '<option value="">— select contest —</option>' +
-        contests.map(c => `<option value="${c.id}">${c.name}</option>`).join("");
+let ws = null;
+const user = api.getUser();
+const WS_BASE_URL = BASE_URL.replace(/^http/, "ws");
 
-      const params = new URLSearchParams(window.location.search);
-      const contestParam = params.get("contest");
-      if (contestParam) {
-        sel.value = contestParam;
-        sel.dispatchEvent(new Event("change"));
-      }
-    } catch (_) {}
-  }
+async function loadContests() {
+  try {
+    const contests = await api.get("/contests");
+    const sel = document.getElementById("contest-select");
 
-  document.getElementById("contest-select").addEventListener("change", async function() {
-    const contestId = this.value;
-    if (!contestId) return;
-    await loadLeaderboard(contestId);
-    connectWS(contestId);
-  });
+    sel.innerHTML =
+      '<option value="">— select contest —</option>' +
+      contests.map(c => `<option value="${c.id}">${c.name}</option>`).join("");
 
-  async function loadLeaderboard(contestId) {
-    try {
-      const data = await api.get(`/leaderboard/${contestId}`);
-      renderLeaderboard(data);
-    } catch (e) { showToast(e.message, "error"); }
-  }
+    const params = new URLSearchParams(window.location.search);
+    const contestParam = params.get("contest");
 
-  function renderLeaderboard(data) {
-    document.getElementById("lb-header").style.display = "block";
-    document.getElementById("lb-contest-name").textContent = data.contest_name;
-
-    const tbody = document.getElementById("lb-body");
-    if (!data.entries.length) {
-      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-secondary);padding:3rem">No entries yet.</td></tr>';
-      return;
+    if (contestParam) {
+      sel.value = contestParam;
+      sel.dispatchEvent(new Event("change"));
     }
-    tbody.innerHTML = data.entries.map(e => `
-      <tr class="${e.rank <= 3 ? 'rank-' + e.rank : ''}" style="${e.username === user?.username ? 'background:rgba(245,166,35,0.06)' : ''}">
-        <td><strong>${e.rank}</strong></td>
-        <td>${e.team_name}</td>
-        <td style="color:var(--text-secondary)">${e.username}${e.username === user?.username ? ' <span style="color:var(--accent-gold);font-size:0.7rem">(you)</span>' : ''}</td>
-        <td style="text-align:right;font-family:'Rajdhani',sans-serif;font-size:1.1rem;color:var(--accent-gold)">${e.total_points.toFixed(1)}</td>
-        <td style="text-align:right;color:var(--accent-green)">₹${e.prize_won.toFixed(0)}</td>
-      </tr>`).join("");
+  } catch (_) {}
+}
+
+document.getElementById("contest-select").addEventListener("change", async function () {
+  const contestId = this.value;
+  if (!contestId) return;
+
+  await loadLeaderboard(contestId);
+  connectWS(contestId);
+});
+
+async function loadLeaderboard(contestId) {
+  try {
+    const data = await api.get(`/leaderboard/${contestId}`);
+    renderLeaderboard(data);
+  } catch (e) {
+    showToast(e.message, "error");
+  }
+}
+
+function renderLeaderboard(data) {
+  document.getElementById("lb-header").style.display = "block";
+  document.getElementById("lb-contest-name").textContent = data.contest_name;
+
+  const tbody = document.getElementById("lb-body");
+
+  if (!data.entries.length) {
+    tbody.innerHTML =
+      '<tr><td colspan="5" style="text-align:center;color:var(--text-secondary);padding:3rem">No entries yet.</td></tr>';
+    return;
   }
 
-  function connectWS(contestId) {
-    if (ws) ws.close();
-    ws = new WebSocket(`ws://localhost:8000/ws/leaderboard/${contestId}`);
-    ws.onmessage = (e) => {
-      const msg = JSON.parse(e.data);
-      if (msg.type === "leaderboard_update") {
-        renderLeaderboard({ contest_name: document.getElementById("lb-contest-name").textContent, entries: msg.leaderboard });
-      }
-    };
-    ws.onclose = () => { setTimeout(() => connectWS(contestId), 3000); };
-  }
+  tbody.innerHTML = data.entries.map(e => `
+    <tr class="${e.rank <= 3 ? 'rank-' + e.rank : ''}" style="${e.username === user?.username ? 'background:rgba(245,166,35,0.06)' : ''}">
+      <td><strong>${e.rank}</strong></td>
+      <td>${e.team_name}</td>
+      <td style="color:var(--text-secondary)">
+        ${e.username}${e.username === user?.username ? ' <span style="color:var(--accent-gold);font-size:0.7rem">(you)</span>' : ''}
+      </td>
+      <td style="text-align:right;font-family:'Rajdhani',sans-serif;font-size:1.1rem;color:var(--accent-gold)">
+        ${e.total_points.toFixed(1)}
+      </td>
+      <td style="text-align:right;color:var(--accent-green)">
+        ₹${e.prize_won.toFixed(0)}
+      </td>
+    </tr>
+  `).join("");
+}
 
-  loadContests();
+function connectWS(contestId) {
+  if (ws) ws.close();
+
+  ws = new WebSocket(`${WS_BASE_URL}/ws/leaderboard/${contestId}`);
+
+  ws.onmessage = (e) => {
+    const msg = JSON.parse(e.data);
+
+    if (msg.type === "leaderboard_update") {
+      renderLeaderboard({
+        contest_name: document.getElementById("lb-contest-name").textContent,
+        entries: msg.leaderboard
+      });
+    }
+  };
+
+  ws.onerror = (e) => {
+    console.error("Leaderboard WebSocket error:", e);
+  };
+
+  ws.onclose = () => {
+    setTimeout(() => connectWS(contestId), 3000);
+  };
+}
+
+loadContests();
 </script>
 </body>
 </html>
