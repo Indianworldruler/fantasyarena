@@ -12,6 +12,9 @@ The system follows a microservice-style modular structure where separate backend
 
 ## Live Application Links
 
+### NOTE: If you want to run using the live hosted link, Firstly open the backend link, Wait for a minute then open the frontend link. Rest all the instructions given in the README.md file for the offline run of  the app. Steps to use the app are in the documentation Phase 1. 
+
+
 The application can also be accessed online using the deployed Render links below.
 
 Frontend:
@@ -26,10 +29,10 @@ Backend API:
 https://fantasyarena-euzq.onrender.com
 ```
 
-Backend API Documentation:
+Documentation:
 
 ```text
-https://fantasyarena-euzq.onrender.com/docs
+https://docs.google.com/document/d/1jg2-l1Yr9yDWzrhStNamG4C0sZuTrI8JeOHDPQkpPsw/edit?tab=t.0
 ```
 
 If the application steps are unclear, refer to the screenshots in the documentation:
