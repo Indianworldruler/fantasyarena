@@ -35,12 +35,6 @@ Documentation:
 https://docs.google.com/document/d/1jg2-l1Yr9yDWzrhStNamG4C0sZuTrI8JeOHDPQkpPsw/edit?tab=t.0
 ```
 
-If the application steps are unclear, refer to the screenshots in the documentation:
-
-```text
-https://docs.google.com/document/d/1jg2-l1Yr9yDWzrhStNamG4C0sZuTrI8JeOHDPQkpPsw/edit?tab=t.0
-```
-
 ---
 
 ## Setup Instructions
